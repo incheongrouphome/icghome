@@ -70,6 +70,27 @@ export default function Home() {
             </Card>
           )}
 
+          {/* Login Card - Only show when not logged in */}
+          {!user && (
+            <Card className="shadow-soft border border-gray-100">
+              <CardContent className="p-4">
+                <h3 className="text-base font-bold text-dark-gray mb-4 flex items-center">
+                  <User className="text-primary mr-2" size={18} />
+                  로그인
+                </h3>
+                <p className="text-sm text-medium-gray mb-4">
+                  회원 전용 서비스를 이용하려면 로그인해주세요.
+                </p>
+                <Button 
+                  onClick={() => window.location.href = "/api/login"}
+                  className="w-full"
+                >
+                  로그인하기
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Contact Information Card - Always visible */}
           <Card className="shadow-soft border border-gray-100">
             <CardContent className="p-4">
@@ -96,27 +117,6 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Login Card - Only show when not logged in */}
-          {!user && (
-            <Card className="shadow-soft border border-gray-100">
-              <CardContent className="p-4">
-                <h3 className="text-base font-bold text-dark-gray mb-4 flex items-center">
-                  <User className="text-primary mr-2" size={18} />
-                  로그인
-                </h3>
-                <p className="text-sm text-medium-gray mb-4">
-                  회원 전용 서비스를 이용하려면 로그인해주세요.
-                </p>
-                <Button 
-                  onClick={() => window.location.href = "/api/login"}
-                  className="w-full"
-                >
-                  로그인하기
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
