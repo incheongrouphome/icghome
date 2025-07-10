@@ -137,6 +137,14 @@
     background-color: hsl(212, 100%, 97%);
   }
   
+  .bg-info-light {
+    background-color: hsl(25, 100%, 97%);
+  }
+  
+  .text-info {
+    color: hsl(24, 70%, 52%);
+  }
+  
   .bg-warm-gray {
     background-color: hsl(210, 17%, 98%);
   }
