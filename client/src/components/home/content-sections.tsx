@@ -88,42 +88,37 @@ export default function ContentSections() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* 회원기관 */}
-      <Card className="shadow-soft border border-gray-100">
-        <CardContent className="p-6">
+      <Card className="shadow-soft border border-gray-100 h-48">
+        <CardContent className="p-4 h-full">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-bold text-dark-gray">회원기관</h3>
+            <a 
+              href="/members" 
+              className="text-xs text-medium-gray hover:text-primary transition-colors"
+            >
+              더보기 →
+            </a>
+          </div>
           <Tabs defaultValue="notices" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-dark-gray">회원기관</h3>
-              <a 
-                href="/members" 
-                className="text-sm text-medium-gray hover:text-primary transition-colors"
-              >
-                더보기 →
-              </a>
-            </div>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="notices">회원공지</TabsTrigger>
-              <TabsTrigger value="communication">소통공간</TabsTrigger>
-              <TabsTrigger value="applications">사업신청</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 h-8">
+              <TabsTrigger value="notices" className="text-xs">회원공지</TabsTrigger>
+              <TabsTrigger value="communication" className="text-xs">소통공간</TabsTrigger>
+              <TabsTrigger value="applications" className="text-xs">사업신청</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="notices" className="mt-4">
-              <div className="space-y-2">
-                {posts.members.notices.map((post, index) => (
+            <TabsContent value="notices" className="mt-2">
+              <div className="space-y-1">
+                {posts.members.notices.slice(0, 3).map((post, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                        {post.category}
-                      </span>
-                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                        {post.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-medium-gray ml-4">
+                    <span className="text-xs text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                      {post.title}
+                    </span>
+                    <span className="text-xs text-medium-gray ml-2">
                       {post.date}
                     </span>
                   </div>
@@ -131,22 +126,17 @@ export default function ContentSections() {
               </div>
             </TabsContent>
             
-            <TabsContent value="communication" className="mt-4">
-              <div className="space-y-2">
-                {posts.members.communication.map((post, index) => (
+            <TabsContent value="communication" className="mt-2">
+              <div className="space-y-1">
+                {posts.members.communication.slice(0, 3).map((post, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                        {post.category}
-                      </span>
-                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                        {post.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-medium-gray ml-4">
+                    <span className="text-xs text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                      {post.title}
+                    </span>
+                    <span className="text-xs text-medium-gray ml-2">
                       {post.date}
                     </span>
                   </div>
@@ -154,22 +144,17 @@ export default function ContentSections() {
               </div>
             </TabsContent>
             
-            <TabsContent value="applications" className="mt-4">
-              <div className="space-y-2">
-                {posts.members.applications.map((post, index) => (
+            <TabsContent value="applications" className="mt-2">
+              <div className="space-y-1">
+                {posts.members.applications.slice(0, 3).map((post, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                        {post.category}
-                      </span>
-                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                        {post.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-medium-gray ml-4">
+                    <span className="text-xs text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                      {post.title}
+                    </span>
+                    <span className="text-xs text-medium-gray ml-2">
                       {post.date}
                     </span>
                   </div>
@@ -181,39 +166,34 @@ export default function ContentSections() {
       </Card>
 
       {/* 열린공지 */}
-      <Card className="shadow-soft border border-gray-100">
-        <CardContent className="p-6">
+      <Card className="shadow-soft border border-gray-100 h-48">
+        <CardContent className="p-4 h-full">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-bold text-dark-gray">열린공지</h3>
+            <a 
+              href="/announcements" 
+              className="text-xs text-medium-gray hover:text-primary transition-colors"
+            >
+              더보기 →
+            </a>
+          </div>
           <Tabs defaultValue="public" className="w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-dark-gray">열린공지</h3>
-              <a 
-                href="/announcements" 
-                className="text-sm text-medium-gray hover:text-primary transition-colors"
-              >
-                더보기 →
-              </a>
-            </div>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="public">열린공지</TabsTrigger>
-              <TabsTrigger value="jobs">채용공고</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="public" className="text-xs">열린공지</TabsTrigger>
+              <TabsTrigger value="jobs" className="text-xs">채용공고</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="public" className="mt-4">
-              <div className="space-y-2">
-                {posts.announcements.public.map((post, index) => (
+            <TabsContent value="public" className="mt-2">
+              <div className="space-y-1">
+                {posts.announcements.public.slice(0, 3).map((post, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                        {post.category}
-                      </span>
-                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                        {post.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-medium-gray ml-4">
+                    <span className="text-xs text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                      {post.title}
+                    </span>
+                    <span className="text-xs text-medium-gray ml-2">
                       {post.date}
                     </span>
                   </div>
@@ -221,22 +201,17 @@ export default function ContentSections() {
               </div>
             </TabsContent>
             
-            <TabsContent value="jobs" className="mt-4">
-              <div className="space-y-2">
-                {posts.announcements.jobs.map((post, index) => (
+            <TabsContent value="jobs" className="mt-2">
+              <div className="space-y-1">
+                {posts.announcements.jobs.slice(0, 3).map((post, index) => (
                   <div 
                     key={index}
-                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                    className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center space-x-3 flex-1">
-                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                        {post.category}
-                      </span>
-                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                        {post.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-medium-gray ml-4">
+                    <span className="text-xs text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                      {post.title}
+                    </span>
+                    <span className="text-xs text-medium-gray ml-2">
                       {post.date}
                     </span>
                   </div>
