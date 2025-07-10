@@ -68,42 +68,7 @@ const posts = {
   }
 };
 
-const renderPostList = (postList: any[], categoryColors: string) => (
-  <div className="space-y-2">
-    {postList.map((post, index) => (
-      <div 
-        key={index}
-        className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
-      >
-        <div className="flex items-center space-x-3 flex-1">
-          <span className={`text-xs px-2 py-1 rounded-md font-medium ${categoryColors}`}>
-            {post.category}
-          </span>
-          <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-            {post.title}
-          </span>
-        </div>
-        <span className="text-xs text-medium-gray ml-4">
-          {post.date}
-        </span>
-      </div>
-    ))}
-  </div>
-);
-
 export default function ContentSections() {
-  // 회원기관 탭의 모든 게시글을 합치기
-  const membersPosts = [
-    ...posts.members.notices,
-    ...posts.members.communication,
-    ...posts.members.applications
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
-
-  // 공지사항 탭의 모든 게시글을 합치기
-  const announcementsPosts = [
-    ...posts.announcements.public,
-    ...posts.announcements.jobs
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
 
   const getCategoryColors = (category: string) => {
     switch(category) {
@@ -123,36 +88,13 @@ export default function ContentSections() {
   };
 
   return (
-    <Card className="shadow-soft border border-gray-100">
-      <CardContent className="p-6">
-        <Tabs defaultValue="members" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="members">회원기관</TabsTrigger>
-            <TabsTrigger value="announcements">공지사항</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="members" className="mt-4">
-            <div className="space-y-2">
-              {membersPosts.map((post, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex items-center space-x-3 flex-1">
-                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                      {post.category}
-                    </span>
-                    <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                      {post.title}
-                    </span>
-                  </div>
-                  <span className="text-xs text-medium-gray ml-4">
-                    {post.date}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-center">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 회원기관 */}
+      <Card className="shadow-soft border border-gray-100">
+        <CardContent className="p-6">
+          <Tabs defaultValue="notices" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-gray">회원기관</h3>
               <a 
                 href="/members" 
                 className="text-sm text-medium-gray hover:text-primary transition-colors"
@@ -160,30 +102,90 @@ export default function ContentSections() {
                 더보기 →
               </a>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="announcements" className="mt-4">
-            <div className="space-y-2">
-              {announcementsPosts.map((post, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex items-center space-x-3 flex-1">
-                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
-                      {post.category}
-                    </span>
-                    <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
-                      {post.title}
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="notices">회원공지</TabsTrigger>
+              <TabsTrigger value="communication">소통공간</TabsTrigger>
+              <TabsTrigger value="applications">사업신청</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="notices" className="mt-4">
+              <div className="space-y-2">
+                {posts.members.notices.map((post, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
+                        {post.category}
+                      </span>
+                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                        {post.title}
+                      </span>
+                    </div>
+                    <span className="text-xs text-medium-gray ml-4">
+                      {post.date}
                     </span>
                   </div>
-                  <span className="text-xs text-medium-gray ml-4">
-                    {post.date}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-center">
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="communication" className="mt-4">
+              <div className="space-y-2">
+                {posts.members.communication.map((post, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
+                        {post.category}
+                      </span>
+                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                        {post.title}
+                      </span>
+                    </div>
+                    <span className="text-xs text-medium-gray ml-4">
+                      {post.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="applications" className="mt-4">
+              <div className="space-y-2">
+                {posts.members.applications.map((post, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
+                        {post.category}
+                      </span>
+                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                        {post.title}
+                      </span>
+                    </div>
+                    <span className="text-xs text-medium-gray ml-4">
+                      {post.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* 열린공지 */}
+      <Card className="shadow-soft border border-gray-100">
+        <CardContent className="p-6">
+          <Tabs defaultValue="public" className="w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-gray">열린공지</h3>
               <a 
                 href="/announcements" 
                 className="text-sm text-medium-gray hover:text-primary transition-colors"
@@ -191,9 +193,59 @@ export default function ContentSections() {
                 더보기 →
               </a>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="public">열린공지</TabsTrigger>
+              <TabsTrigger value="jobs">채용공고</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="public" className="mt-4">
+              <div className="space-y-2">
+                {posts.announcements.public.map((post, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
+                        {post.category}
+                      </span>
+                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                        {post.title}
+                      </span>
+                    </div>
+                    <span className="text-xs text-medium-gray ml-4">
+                      {post.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="jobs" className="mt-4">
+              <div className="space-y-2">
+                {posts.announcements.jobs.map((post, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
+                        {post.category}
+                      </span>
+                      <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+                        {post.title}
+                      </span>
+                    </div>
+                    <span className="text-xs text-medium-gray ml-4">
+                      {post.date}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
