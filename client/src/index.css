@@ -80,46 +80,34 @@
     background: linear-gradient(135deg, hsl(215, 25%, 27%) 0%, hsl(24, 70%, 52%) 100%);
   }
 
-  /* Custom selection colors for better visibility */
-  ::selection {
-    background: hsl(215, 25%, 27%) !important;
-    color: hsl(0, 0%, 100%) !important;
+  /* Selection styles */
+  * {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
   }
 
-  ::-moz-selection {
-    background: hsl(215, 25%, 27%) !important;
-    color: hsl(0, 0%, 100%) !important;
+  *::selection {
+    background-color: #4A4E5A;
+    color: white;
   }
 
-  /* Dark areas selection (like footer) with higher specificity */
-  footer::selection,
-  footer *::selection,
-  footer p::selection,
-  footer h3::selection,
-  footer h4::selection,
-  footer a::selection,
-  footer span::selection,
-  footer div::selection,
-  .bg-dark-gray::selection,
-  .bg-dark-gray *::selection {
-    background-color: #e07d2e !important;
-    color: #ffffff !important;
+  *::-moz-selection {
+    background-color: #4A4E5A;
+    color: white;
   }
 
-  footer::-moz-selection,
-  footer *::-moz-selection,
-  footer p::-moz-selection,
-  footer h3::-moz-selection,
-  footer h4::-moz-selection,
-  footer a::-moz-selection,
-  footer span::-moz-selection,
-  footer div::-moz-selection,
-  .bg-dark-gray::-moz-selection,
-  .bg-dark-gray *::-moz-selection {
-    background-color: #e07d2e !important;
-    color: #ffffff !important;
+  footer *::selection {
+    background-color: #E07D2E;
+    color: white;
   }
-  
+
+  footer *::-moz-selection {
+    background-color: #E07D2E;
+    color: white;
+  }
+
   .shadow-soft {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
