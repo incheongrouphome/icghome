@@ -32,19 +32,25 @@ export default function ServiceCards() {
       {services.map((service, index) => (
         <Card 
           key={index} 
-          className="shadow-soft card-hover transition-all cursor-pointer border border-gray-100"
+          className="shadow-soft card-hover transition-all cursor-pointer border border-gray-100 h-32"
           onClick={() => handleCardClick(service.href)}
         >
-          <CardContent className="p-6">
-            <div className="w-16 h-16 bg-primary-light rounded-2xl flex items-center justify-center mb-4">
-              {service.icon}
+          <CardContent className="p-4 h-full flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
+                <div className="w-5 h-5 text-primary">
+                  {service.icon}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-dark-gray mb-1">{service.title}</h3>
+                <p className="text-medium-gray text-xs leading-relaxed">
+                  {service.description}
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-dark-gray mb-2">{service.title}</h3>
-            <p className="text-medium-gray text-sm mb-4 leading-relaxed">
-              {service.description}
-            </p>
-            <button className="text-primary font-medium text-sm hover:underline">
-              자세히 알아보기 →
+            <button className="text-primary font-medium text-xs px-2 py-1 border border-primary rounded hover:bg-primary hover:text-white transition-colors">
+              보기
             </button>
           </CardContent>
         </Card>
