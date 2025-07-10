@@ -38,7 +38,7 @@ export default function ServiceCards() {
           <CardContent className="p-3 h-full flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-primary-light rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 text-primary">
+                <div className="text-primary [&>svg]:w-4 [&>svg]:h-4">
                   {service.icon}
                 </div>
               </div>
@@ -49,7 +49,7 @@ export default function ServiceCards() {
                 </p>
               </div>
             </div>
-            <button className="text-primary font-medium text-xs px-2 py-1 border border-primary rounded hover:bg-primary hover:text-white transition-colors flex-shrink-0">
+            <button className="text-primary font-medium text-xs px-3 py-1.5 border border-primary rounded hover:bg-primary hover:text-white transition-colors flex-shrink-0">
               보기
             </button>
           </CardContent>
