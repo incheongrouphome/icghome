@@ -82,26 +82,42 @@
 
   /* Custom selection colors for better visibility */
   ::selection {
-    background: hsl(215, 25%, 27%);
-    color: hsl(0, 0%, 100%);
+    background: hsl(215, 25%, 27%) !important;
+    color: hsl(0, 0%, 100%) !important;
   }
 
   ::-moz-selection {
-    background: hsl(215, 25%, 27%);
-    color: hsl(0, 0%, 100%);
+    background: hsl(215, 25%, 27%) !important;
+    color: hsl(0, 0%, 100%) !important;
   }
 
-  /* Dark areas selection (like footer) */
-  .bg-dark-gray ::selection,
-  footer ::selection {
-    background: hsl(24, 70%, 52%);
-    color: hsl(0, 0%, 100%);
+  /* Dark areas selection (like footer) with higher specificity */
+  footer::selection,
+  footer *::selection,
+  footer p::selection,
+  footer h3::selection,
+  footer h4::selection,
+  footer a::selection,
+  footer span::selection,
+  footer div::selection,
+  .bg-dark-gray::selection,
+  .bg-dark-gray *::selection {
+    background-color: #e07d2e !important;
+    color: #ffffff !important;
   }
 
-  .bg-dark-gray ::-moz-selection,
-  footer ::-moz-selection {
-    background: hsl(24, 70%, 52%);
-    color: hsl(0, 0%, 100%);
+  footer::-moz-selection,
+  footer *::-moz-selection,
+  footer p::-moz-selection,
+  footer h3::-moz-selection,
+  footer h4::-moz-selection,
+  footer a::-moz-selection,
+  footer span::-moz-selection,
+  footer div::-moz-selection,
+  .bg-dark-gray::-moz-selection,
+  .bg-dark-gray *::-moz-selection {
+    background-color: #e07d2e !important;
+    color: #ffffff !important;
   }
   
   .shadow-soft {
