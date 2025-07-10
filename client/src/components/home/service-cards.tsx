@@ -32,24 +32,24 @@ export default function ServiceCards() {
       {services.map((service, index) => (
         <Card 
           key={index} 
-          className="shadow-soft card-hover transition-all cursor-pointer border border-gray-100 h-32"
+          className="shadow-soft card-hover transition-all cursor-pointer border border-gray-100 h-20"
           onClick={() => handleCardClick(service.href)}
         >
-          <CardContent className="p-4 h-full flex items-center justify-between">
+          <CardContent className="p-3 h-full flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary-light rounded-lg flex items-center justify-center">
-                <div className="w-5 h-5 text-primary">
+              <div className="w-8 h-8 bg-primary-light rounded-lg flex items-center justify-center">
+                <div className="w-4 h-4 text-primary">
                   {service.icon}
                 </div>
               </div>
               <div>
-                <h3 className="text-base font-bold text-dark-gray mb-1">{service.title}</h3>
-                <p className="text-medium-gray text-xs leading-relaxed">
+                <h3 className="text-sm font-bold text-dark-gray mb-0.5">{service.title}</h3>
+                <p className="text-medium-gray text-xs leading-tight">
                   {service.description}
                 </p>
               </div>
             </div>
-            <button className="text-primary font-medium text-xs px-2 py-1 border border-primary rounded hover:bg-primary hover:text-white transition-colors">
+            <button className="text-primary font-medium text-xs px-2 py-1 border border-primary rounded hover:bg-primary hover:text-white transition-colors flex-shrink-0">
               보기
             </button>
           </CardContent>
