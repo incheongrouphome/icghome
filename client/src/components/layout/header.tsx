@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Home } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "/", label: "홈" },
@@ -16,12 +15,7 @@ const navItems = [
 
 export default function Header() {
   const [location] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-
-  const handleLogin = () => {
-    window.location.href = "/api/login";
-  };
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-soft sticky top-0 z-50">
@@ -55,16 +49,7 @@ export default function Header() {
             ))}
           </nav>
           
-          {/* Login Button (Desktop) */}
-          {!isAuthenticated && (
-            <Button 
-              onClick={handleLogin}
-              className="hidden md:flex"
-              size="sm"
-            >
-              로그인
-            </Button>
-          )}
+
           
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -89,16 +74,6 @@ export default function Header() {
                     {item.label}
                   </Link>
                 ))}
-                
-                {!isAuthenticated && (
-                  <Button 
-                    onClick={handleLogin}
-                    className="mt-6"
-                    size="sm"
-                  >
-                    로그인
-                  </Button>
-                )}
               </div>
             </SheetContent>
           </Sheet>
