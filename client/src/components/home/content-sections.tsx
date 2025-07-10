@@ -2,71 +2,144 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const posts = {
-  general: [
-    {
-      category: "일반공지",
-      title: "2024년 하반기 정기총회 개최 안내",
-      date: "25.04.14"
-    },
-    {
-      category: "사업안내",
-      title: "신규 그룹홈 인증 지원사업 신청 접수",
-      date: "25.03.28"
-    },
-    {
-      category: "교육안내",
-      title: "아동보호전문기관 연계 강화 방안",
-      date: "25.03.20"
-    },
-    {
-      category: "일반공지",
-      title: "청소년 자립지원 프로그램 운영 계획",
-      date: "25.03.15"
-    }
-  ],
-  jobs: [
-    {
-      category: "채용공고",
-      title: "인천지역 그룹홈 생활복지사 채용",
-      date: "25.05.07"
-    },
-    {
-      category: "채용공고",
-      title: "아동상담사 정규직 모집",
-      date: "25.05.05"
-    },
-    {
-      category: "계약직",
-      title: "방과후 돌봄교사 채용공고",
-      date: "25.04.28"
-    },
-    {
-      category: "인턴십",
-      title: "사회복지 현장실습생 모집",
-      date: "25.04.20"
-    }
-  ]
+  members: {
+    notices: [
+      {
+        category: "회원공지",
+        title: "2024년 하반기 정기총회 개최 안내",
+        date: "25.04.14"
+      },
+      {
+        category: "회원공지",
+        title: "회원기관 운영 매뉴얼 배포",
+        date: "25.03.28"
+      }
+    ],
+    communication: [
+      {
+        category: "소통공간",
+        title: "운영 노하우 공유 - 아동 상담 사례",
+        date: "25.04.10"
+      },
+      {
+        category: "소통공간",
+        title: "시설 개선 아이디어 모음",
+        date: "25.04.05"
+      }
+    ],
+    applications: [
+      {
+        category: "사업신청",
+        title: "2024년 그룹홈 운영비 지원사업 신청",
+        date: "25.03.20"
+      },
+      {
+        category: "사업신청",
+        title: "종사자 교육비 지원 프로그램 접수",
+        date: "25.03.15"
+      }
+    ]
+  },
+  announcements: {
+    public: [
+      {
+        category: "열린공지",
+        title: "아동보호전문기관 연계 강화 방안",
+        date: "25.04.20"
+      },
+      {
+        category: "열린공지",
+        title: "청소년 자립지원 프로그램 운영 계획",
+        date: "25.04.15"
+      }
+    ],
+    jobs: [
+      {
+        category: "채용공고",
+        title: "인천지역 그룹홈 생활복지사 채용",
+        date: "25.05.07"
+      },
+      {
+        category: "채용공고",
+        title: "아동상담사 정규직 모집",
+        date: "25.05.05"
+      }
+    ]
+  }
 };
 
+const renderPostList = (postList: any[], categoryColors: string) => (
+  <div className="space-y-2">
+    {postList.map((post, index) => (
+      <div 
+        key={index}
+        className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
+      >
+        <div className="flex items-center space-x-3 flex-1">
+          <span className={`text-xs px-2 py-1 rounded-md font-medium ${categoryColors}`}>
+            {post.category}
+          </span>
+          <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
+            {post.title}
+          </span>
+        </div>
+        <span className="text-xs text-medium-gray ml-4">
+          {post.date}
+        </span>
+      </div>
+    ))}
+  </div>
+);
+
 export default function ContentSections() {
+  // 회원기관 탭의 모든 게시글을 합치기
+  const membersPosts = [
+    ...posts.members.notices,
+    ...posts.members.communication,
+    ...posts.members.applications
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+
+  // 공지사항 탭의 모든 게시글을 합치기
+  const announcementsPosts = [
+    ...posts.announcements.public,
+    ...posts.announcements.jobs
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+
+  const getCategoryColors = (category: string) => {
+    switch(category) {
+      case "회원공지":
+        return "bg-primary-light text-primary";
+      case "소통공간":
+        return "bg-green-100 text-green-600";
+      case "사업신청":
+        return "bg-purple-100 text-purple-600";
+      case "열린공지":
+        return "bg-blue-100 text-blue-600";
+      case "채용공고":
+        return "bg-info-light text-info";
+      default:
+        return "bg-gray-100 text-gray-600";
+    }
+  };
+
   return (
     <Card className="shadow-soft border border-gray-100">
       <CardContent className="p-6">
-        <Tabs defaultValue="general" className="w-full">
+        <Tabs defaultValue="members" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="general">공지사항</TabsTrigger>
-            <TabsTrigger value="jobs">자료실</TabsTrigger>
+            <TabsTrigger value="members">회원기관</TabsTrigger>
+            <TabsTrigger value="announcements">공지사항</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general" className="mt-4">
+          <TabsContent value="members" className="mt-4">
             <div className="space-y-2">
-              {posts.general.map((post, index) => (
+              {membersPosts.map((post, index) => (
                 <div 
                   key={index}
                   className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
                 >
                   <div className="flex items-center space-x-3 flex-1">
-                    <span className="text-xs px-2 py-1 bg-primary-light text-primary rounded-md font-medium">
+                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
                       {post.category}
                     </span>
                     <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
@@ -81,7 +154,7 @@ export default function ContentSections() {
             </div>
             <div className="mt-4 text-center">
               <a 
-                href="/announcements" 
+                href="/members" 
                 className="text-sm text-medium-gray hover:text-primary transition-colors"
               >
                 더보기 →
@@ -89,15 +162,15 @@ export default function ContentSections() {
             </div>
           </TabsContent>
           
-          <TabsContent value="jobs" className="mt-4">
+          <TabsContent value="announcements" className="mt-4">
             <div className="space-y-2">
-              {posts.jobs.map((post, index) => (
+              {announcementsPosts.map((post, index) => (
                 <div 
                   key={index}
                   className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer border-b border-gray-100 last:border-b-0"
                 >
                   <div className="flex items-center space-x-3 flex-1">
-                    <span className="text-xs px-2 py-1 bg-info-light text-info rounded-md font-medium">
+                    <span className={`text-xs px-2 py-1 rounded-md font-medium ${getCategoryColors(post.category)}`}>
                       {post.category}
                     </span>
                     <span className="text-sm text-dark-gray hover:text-primary transition-colors flex-1 truncate">
