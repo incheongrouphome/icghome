@@ -59,17 +59,29 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             {navItems.map((item) => (
               <div key={item.href} className="relative group">
-                <Link 
-                  href={item.href}
-                  className={`font-medium transition-colors flex items-center space-x-1 ${
-                    location === item.href || (item.submenu && item.submenu.some(sub => location === sub.href))
-                      ? "text-primary" 
-                      : "text-dark-gray hover:text-primary"
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {item.submenu && <ChevronDown size={16} className="transition-transform group-hover:rotate-180" />}
-                </Link>
+                {item.submenu ? (
+                  <div
+                    className={`font-medium transition-colors flex items-center space-x-1 cursor-pointer ${
+                      item.submenu && item.submenu.some(sub => location === sub.href)
+                        ? "text-primary" 
+                        : "text-dark-gray hover:text-primary"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <ChevronDown size={16} className="transition-transform group-hover:rotate-180" />
+                  </div>
+                ) : (
+                  <Link 
+                    href={item.href}
+                    className={`font-medium transition-colors flex items-center space-x-1 ${
+                      location === item.href
+                        ? "text-primary" 
+                        : "text-dark-gray hover:text-primary"
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                  </Link>
+                )}
                 
                 {/* Dropdown Menu */}
                 {item.submenu && (
@@ -108,17 +120,29 @@ export default function Header() {
               <div className="flex flex-col space-y-4 mt-8">
                 {navItems.map((item) => (
                   <div key={item.href} className="space-y-2">
-                    <Link 
-                      href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className={`text-lg font-medium transition-colors flex items-center space-x-1 ${
-                        location === item.href || (item.submenu && item.submenu.some(sub => location === sub.href))
-                          ? "text-primary" 
-                          : "text-dark-gray hover:text-primary"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                    </Link>
+                    {item.submenu ? (
+                      <div
+                        className={`text-lg font-medium transition-colors flex items-center space-x-1 ${
+                          item.submenu && item.submenu.some(sub => location === sub.href)
+                            ? "text-primary" 
+                            : "text-dark-gray hover:text-primary"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                      </div>
+                    ) : (
+                      <Link 
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`text-lg font-medium transition-colors flex items-center space-x-1 ${
+                          location === item.href
+                            ? "text-primary" 
+                            : "text-dark-gray hover:text-primary"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                      </Link>
+                    )}
                     
                     {/* Mobile Submenu */}
                     {item.submenu && (

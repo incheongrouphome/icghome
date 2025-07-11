@@ -8,8 +8,7 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import About from "@/pages/about";
 import Business from "@/pages/business";
-import Members from "@/pages/members";
-import Announcements from "@/pages/announcements";
+
 import Donation from "@/pages/donation";
 import NotFound from "@/pages/not-found";
 import Header from "@/components/layout/header";
@@ -42,11 +41,9 @@ function Router() {
           <Route path="/about/association" component={Association} />
           <Route path="/about/organization" component={Organization} />
           <Route path="/business" component={Business} />
-          <Route path="/members" component={Members} />
           <Route path="/members/notices" component={MemberNotices} />
           <Route path="/members/communication" component={Communication} />
           <Route path="/members/application" component={Application} />
-          <Route path="/announcements" component={Announcements} />
           <Route path="/announcements/general" component={GeneralAnnouncements} />
           <Route path="/announcements/jobs" component={JobPostings} />
           <Route path="/donation" component={Donation} />
