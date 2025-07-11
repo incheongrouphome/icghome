@@ -165,7 +165,7 @@ export default function ContentSections() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* 회원기관 */}
-      <Card className="shadow-soft border border-gray-100 h-48">
+      <Card className="shadow-soft border border-gray-100 h-64">
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">회원기관</h3>
@@ -256,7 +256,7 @@ export default function ContentSections() {
       </Card>
 
       {/* 열린공지 */}
-      <Card className="shadow-soft border border-gray-100 h-48">
+      <Card className="shadow-soft border border-gray-100 h-64">
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">열린공지</h3>
