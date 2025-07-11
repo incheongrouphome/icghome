@@ -185,7 +185,7 @@ export default function ContentSections() {
             
             <TabsContent value="notices" className="mt-2">
               <div className="space-y-1">
-                {posts.members.notices.slice(0, 5).map((post, index) => (
+                {posts.members.notices.slice(0, 4).map((post, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
@@ -208,7 +208,7 @@ export default function ContentSections() {
             
             <TabsContent value="communication" className="mt-2">
               <div className="space-y-1">
-                {posts.members.communication.slice(0, 5).map((post, index) => (
+                {posts.members.communication.slice(0, 4).map((post, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
@@ -231,7 +231,7 @@ export default function ContentSections() {
             
             <TabsContent value="applications" className="mt-2">
               <div className="space-y-1">
-                {posts.members.applications.slice(0, 5).map((post, index) => (
+                {posts.members.applications.slice(0, 4).map((post, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
@@ -275,7 +275,7 @@ export default function ContentSections() {
             
             <TabsContent value="public" className="mt-2">
               <div className="space-y-1">
-                {posts.announcements.public.slice(0, 5).map((post, index) => (
+                {posts.announcements.public.slice(0, 4).map((post, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
@@ -298,7 +298,7 @@ export default function ContentSections() {
             
             <TabsContent value="jobs" className="mt-2">
               <div className="space-y-1">
-                {posts.announcements.jobs.slice(0, 5).map((post, index) => (
+                {posts.announcements.jobs.slice(0, 4).map((post, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
