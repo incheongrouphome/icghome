@@ -13,7 +13,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
-// Session storage table (mandatory for Replit Auth)
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -24,12 +24,13 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (mandatory for Replit Auth)
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password").notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("visitor").notNull(), // visitor, member, admin
   isApproved: boolean("is_approved").default(false).notNull(),
@@ -70,6 +71,18 @@ export const comments = pgTable("comments", {
   authorId: varchar("author_id").references(() => users.id),
   postId: integer("post_id").references(() => posts.id),
   parentId: integer("parent_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Slider images
+export const sliderImages = pgTable("slider_images", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  imageUrl: varchar("image_url").notNull(),
+  altText: varchar("alt_text"),
+  isActive: boolean("is_active").default(true),
+  order: integer("order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -137,6 +150,26 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   updatedAt: true,
 });
 
+export const insertSliderImageSchema = createInsertSchema(sliderImages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Auth schemas
+export const loginSchema = z.object({
+  email: z.string().email("올바른 이메일을 입력해주세요"),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
+});
+
+export const signupSchema = z.object({
+  email: z.string().email("올바른 이메일을 입력해주세요"),
+  password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
+  firstName: z.string().min(1, "이름을 입력해주세요"),
+  lastName: z.string().min(1, "성을 입력해주세요"),
+  organization: z.string().optional(),
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -146,6 +179,10 @@ export type Post = typeof posts.$inferSelect;
 export type InsertPost = z.infer<typeof insertPostSchema>;
 export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
+export type SliderImage = typeof sliderImages.$inferSelect;
+export type InsertSliderImage = z.infer<typeof insertSliderImageSchema>;
+export type LoginData = z.infer<typeof loginSchema>;
+export type SignupData = z.infer<typeof signupSchema>;
 
 // Extended types with relations
 export type PostWithAuthor = Post & {
@@ -158,3 +195,6 @@ export type CommentWithAuthor = Comment & {
   author: User | null;
   replies?: CommentWithAuthor[];
 };
+
+// Public user type (without password)
+export type PublicUser = Omit<User, 'password'>;

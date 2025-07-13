@@ -7,6 +7,7 @@ import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import WritePost from "./write-post";
 import type { PostWithAuthor } from "@shared/schema";
 
 interface BoardListProps {
@@ -18,6 +19,7 @@ export default function BoardList({ categorySlug }: BoardListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchCategory, setSearchCategory] = useState("제목");
+  const [isWriting, setIsWriting] = useState(false);
   const postsPerPage = 10;
 
   const { data: category } = useQuery({
@@ -25,15 +27,15 @@ export default function BoardList({ categorySlug }: BoardListProps) {
   });
 
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ["/api/posts", { categoryId: category?.id }],
+    queryKey: ["/api/posts", { categoryId: (category as any)?.id }],
     queryFn: () => {
       const url = new URL('/api/posts', window.location.origin);
-      if (category?.id) {
-        url.searchParams.set('categoryId', category.id.toString());
+      if ((category as any)?.id) {
+        url.searchParams.set('categoryId', (category as any).id.toString());
       }
       return fetch(url.toString()).then(res => res.json());
     },
-    enabled: !!category?.id,
+    enabled: !!(category as any)?.id,
   });
 
   const postsArray = Array.isArray(posts) ? posts : [];
@@ -46,7 +48,7 @@ export default function BoardList({ categorySlug }: BoardListProps) {
       case "내용":
         return post.content.toLowerCase().includes(searchTerm.toLowerCase());
       case "작성자":
-        return post.author?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        return (post.author?.firstName || '').toLowerCase().includes(searchTerm.toLowerCase());
       default:
         return post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                post.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -58,12 +60,13 @@ export default function BoardList({ categorySlug }: BoardListProps) {
   const currentPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
 
   const canWrite = user && (
-    user.role === 'admin' || 
-    (category?.allowedRoles?.includes(user.role) && 
-     (!category.requiresApproval || user.isApproved))
+    (user as any).role === 'admin' || 
+    ((category as any)?.allowedRoles?.includes((user as any).role) && 
+     (!(category as any)?.requiresApproval || (user as any).isApproved))
   );
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | Date | null) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -90,6 +93,17 @@ export default function BoardList({ categorySlug }: BoardListProps) {
     return pageNumbers;
   };
 
+  if (isWriting && category) {
+    return (
+      <WritePost
+        categoryId={(category as any).id}
+        categoryName={(category as any).name}
+        onCancel={() => setIsWriting(false)}
+        onSuccess={() => setIsWriting(false)}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -102,16 +116,6 @@ export default function BoardList({ categorySlug }: BoardListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header with Write Button */}
-      <div className="flex justify-end">
-        {canWrite && (
-          <Button className="flex items-center bg-blue-500 hover:bg-blue-600 text-white">
-            <Plus size={16} className="mr-2" />
-            글쓰기
-          </Button>
-        )}
-      </div>
-
       {/* Board Table */}
       <div className="bg-white border border-gray-300">
         {/* Table Header */}
@@ -147,7 +151,7 @@ export default function BoardList({ categorySlug }: BoardListProps) {
                   </div>
                 </div>
                 <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
-                  {post.author?.name || '익명'}
+                  {post.author?.firstName || '익명'}
                 </div>
                 <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
                   {formatDate(post.createdAt)}
@@ -230,31 +234,46 @@ export default function BoardList({ categorySlug }: BoardListProps) {
         </div>
       )}
 
-      {/* Search Section */}
-      <div className="flex justify-center items-center space-x-2 mt-4">
-        <Select value={searchCategory} onValueChange={setSearchCategory}>
-          <SelectTrigger className="w-20 h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="제목">제목</SelectItem>
-            <SelectItem value="내용">내용</SelectItem>
-            <SelectItem value="작성자">작성자</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="검색어 입력"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-48 h-8 text-sm"
-        />
-        <Button 
-          size="sm" 
-          onClick={() => setCurrentPage(1)}
-          className="h-8 bg-blue-500 hover:bg-blue-600 text-white"
-        >
-          검색
-        </Button>
+      {/* Search Section and Write Button */}
+      <div className="flex justify-between items-center mt-4">
+        <div className="flex-1"></div>
+        <div className="flex items-center space-x-2">
+          <Select value={searchCategory} onValueChange={setSearchCategory}>
+            <SelectTrigger className="w-20 h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="제목">제목</SelectItem>
+              <SelectItem value="내용">내용</SelectItem>
+              <SelectItem value="작성자">작성자</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="검색어 입력"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-48 h-8 text-sm"
+          />
+          <Button 
+            size="sm" 
+            onClick={() => setCurrentPage(1)}
+            className="h-8 bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            검색
+          </Button>
+        </div>
+        <div className="flex-1 flex justify-end">
+          {canWrite && (
+            <Button 
+              size="sm"
+              className="h-8 bg-green-500 hover:bg-green-600 text-white flex items-center"
+              onClick={() => setIsWriting(true)}
+            >
+              <Plus size={14} className="mr-1" />
+              글쓰기
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

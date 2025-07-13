@@ -3,20 +3,46 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Home, ChevronDown } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-const navItems = [
-  { href: "/", label: "홈" },
-  { 
-    href: "/about", 
-    label: "협의회 소개",
-    submenu: [
-      { href: "/about/group-home", label: "그룹홈 소개" },
-      { href: "/about/association", label: "협의회 소개" },
-      { href: "/about/organization", label: "조직 현황" }
-    ]
-  },
-  { href: "/business", label: "사업소개" },
-  { 
+export default function Header() {
+  const [location] = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
+
+  const handleMembersClick = (e: React.MouseEvent, href: string) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      toast({
+        title: "로그인 필요",
+        description: "회원기관 페이지는 로그인이 필요합니다. 로그인 페이지로 이동합니다...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+      return;
+    }
+    // 로그인된 사용자는 정상 링크 이동 (preventDefault하지 않음)
+  };
+
+  const baseNavItems = [
+    { href: "/", label: "홈" },
+    { 
+      href: "/about", 
+      label: "협의회 소개",
+      submenu: [
+        { href: "/about/group-home", label: "그룹홈 소개" },
+        { href: "/about/association", label: "협의회 소개" },
+        { href: "/about/organization", label: "조직 현황" }
+      ]
+    },
+    { href: "/business", label: "사업소개" },
+  ];
+
+  const membersNavItem = { 
     href: "/members", 
     label: "회원기관",
     submenu: [
@@ -24,21 +50,26 @@ const navItems = [
       { href: "/members/communication", label: "소통공간" },
       { href: "/members/application", label: "사업신청" }
     ]
-  },
-  { 
-    href: "/announcements", 
-    label: "공지사항",
-    submenu: [
-      { href: "/announcements/general", label: "열린공지" },
-      { href: "/announcements/jobs", label: "채용공고" }
-    ]
-  },
-  { href: "/donation", label: "후원안내" },
-];
+  };
 
-export default function Header() {
-  const [location] = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
+  const publicNavItems = [
+    { 
+      href: "/announcements", 
+      label: "공지사항",
+      submenu: [
+        { href: "/announcements/general", label: "열린공지" },
+        { href: "/announcements/jobs", label: "채용공고" }
+      ]
+    },
+    { href: "/donation", label: "후원안내" },
+  ];
+
+  // Always show members menu
+  const navItems = [
+    ...baseNavItems,
+    membersNavItem,
+    ...publicNavItems
+  ];
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-soft sticky top-0 z-50">
@@ -91,6 +122,7 @@ export default function Header() {
                         <Link
                           key={subItem.href}
                           href={subItem.href}
+                          onClick={(e) => item.label === "회원기관" ? handleMembersClick(e, subItem.href) : undefined}
                           className={`block px-4 py-2 text-sm transition-colors ${
                             location === subItem.href
                               ? "text-primary bg-primary/5"
@@ -151,7 +183,12 @@ export default function Header() {
                           <Link
                             key={subItem.href}
                             href={subItem.href}
-                            onClick={() => setIsOpen(false)}
+                            onClick={(e) => {
+                              if (item.label === "회원기관") {
+                                handleMembersClick(e, subItem.href);
+                              }
+                              setIsOpen(false);
+                            }}
                             className={`block text-base transition-colors ${
                               location === subItem.href
                                 ? "text-primary"

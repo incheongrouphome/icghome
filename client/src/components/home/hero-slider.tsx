@@ -16,7 +16,7 @@ const slides = [
     subtitle: "체계적인 교육과 지원으로 건강한 성장을 돕습니다",
     buttons: [
       { text: "사업소개", variant: "default" as const, href: "/business" },
-      { text: "회원가입", variant: "outline" as const, href: "/api/login" }
+      { text: "회원가입", variant: "outline" as const, href: "/" }
     ]
   },
   {
