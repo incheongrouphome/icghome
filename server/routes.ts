@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import session from "express-session";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth";
+import { AuthService } from "./supabase-api";
 import { 
   insertPostSchema, 
   insertCommentSchema, 
@@ -28,6 +29,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     },
   }));
+
+  // 이메일 확인 발송 API
+  app.post('/api/auth/send-verification', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: '이메일이 필요합니다' });
+      }
+
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: '올바른 이메일 형식이 아닙니다' });
+      }
+
+      // 이미 존재하는 이메일인지 확인
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: '이미 등록된 이메일입니다' });
+      }
+
+      // 이메일 확인 발송
+      const { error, token } = await AuthService.sendVerificationEmail(email);
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+
+      res.json({ 
+        message: '확인 이메일이 발송되었습니다.',
+        email 
+      });
+    } catch (error) {
+      console.error('Send verification error:', error);
+      res.status(500).json({ message: '이메일 발송 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 이메일 확인 상태 체크 API
+  app.post('/api/auth/check-verification', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: '이메일이 필요합니다' });
+      }
+
+      // AuthService를 통한 이메일 확인 상태 체크
+      const { verified, error } = await AuthService.checkEmailVerification(email);
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+      
+      res.json({ 
+        verified,
+        email 
+      });
+    } catch (error) {
+      console.error('Check verification error:', error);
+      res.status(500).json({ message: '이메일 확인 상태 확인 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 이메일 확인 링크 처리 API (GET 방식)
+  app.get('/verify-email', async (req, res) => {
+    try {
+      const { token, email } = req.query;
+      
+      if (!token || !email) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #dc2626;">이메일 확인 실패</h2>
+              <p>유효하지 않은 확인 링크입니다.</p>
+              <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+            </body>
+          </html>
+        `);
+      }
+
+      // 토큰 확인
+      const { success, error } = await AuthService.verifyEmailToken(token as string, email as string);
+
+      if (!success) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #dc2626;">이메일 확인 실패</h2>
+              <p>${error || '이메일 확인에 실패했습니다.'}</p>
+              <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+            </body>
+          </html>
+        `);
+      }
+
+      res.send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2 style="color: #16a34a;">이메일 확인 완료!</h2>
+            <p>이메일 인증이 완료되었습니다.</p>
+            <p>이제 회원가입 창으로 돌아가서 가입을 완료해주세요.</p>
+            <a href="/" style="color: #2563eb; font-weight: bold;">홈페이지로 돌아가기</a>
+            <script>
+              // 5초 후 자동으로 홈페이지로 이동
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 5000);
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Email verification error:', error);
+      res.status(500).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2 style="color: #dc2626;">서버 오류</h2>
+            <p>이메일 확인 중 오류가 발생했습니다.</p>
+            <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+          </body>
+        </html>
+      `);
+    }
+  });
+
+  // 회원가입 API (Supabase 이메일 인증 사용)
+  app.post('/api/auth/signup', async (req, res) => {
+    try {
+      const userData: SignupData = signupSchema.parse(req.body);
+      
+      // AuthService를 사용하여 회원가입 처리
+      const { user, error, needsEmailConfirmation } = await AuthService.signUp(
+        userData.email,
+        userData.password,
+        userData.name,
+        userData.organization
+      );
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+
+      if (needsEmailConfirmation) {
+        return res.status(201).json({ 
+          message: '이메일 확인이 필요합니다. 이메일을 확인해주세요.',
+          needsEmailConfirmation: true
+        });
+      }
+
+      res.status(201).json({ 
+        message: '회원가입이 완료되었습니다. 관리자 승인을 기다려주세요.',
+        user 
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: '입력 정보를 확인해주세요', errors: error.errors });
+      }
+      console.error('Signup error:', error);
+      res.status(500).json({ message: '회원가입 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 이메일 확인 API
+  app.post('/api/auth/confirm-email', async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: '토큰이 필요합니다' });
+      }
+
+      const { user, error } = await AuthService.confirmEmail(token);
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+
+      res.json({ 
+        message: '이메일이 확인되었습니다. 관리자 승인을 기다려주세요.',
+        user 
+      });
+    } catch (error) {
+      console.error('Email confirmation error:', error);
+      res.status(500).json({ message: '이메일 확인 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 이메일 재전송 API
+  app.post('/api/auth/resend-confirmation', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: '이메일이 필요합니다' });
+      }
+
+      const { error } = await AuthService.resendConfirmation(email);
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+
+      res.json({ 
+        message: '확인 이메일이 재전송되었습니다.' 
+      });
+    } catch (error) {
+      console.error('Resend confirmation error:', error);
+      res.status(500).json({ message: '이메일 재전송 중 오류가 발생했습니다' });
+    }
+  });
 
   // 로그인 API
   app.post('/api/auth/login', async (req, res) => {
@@ -72,31 +285,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error('Login error:', error);
       res.status(500).json({ message: '로그인 중 오류가 발생했습니다' });
-    }
-  });
-
-  // 회원가입 API
-  app.post('/api/auth/signup', async (req, res) => {
-    try {
-      const userData: SignupData = signupSchema.parse(req.body);
-      
-      // 이미 존재하는 이메일인지 확인
-      const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) {
-        return res.status(409).json({ message: '이미 등록된 이메일입니다' });
-      }
-
-      const newUser = await storage.createUser(userData);
-      res.status(201).json({ 
-        message: '회원가입이 완료되었습니다. 관리자 승인을 기다려주세요.',
-        user: newUser 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: '입력 정보를 확인해주세요', errors: error.errors });
-      }
-      console.error('Signup error:', error);
-      res.status(500).json({ message: '회원가입 중 오류가 발생했습니다' });
     }
   });
 

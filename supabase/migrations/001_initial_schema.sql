@@ -1,70 +1,87 @@
 -- 확장 기능 설정
 create extension if not exists "uuid-ossp";
 
--- 사용자 테이블
-create table if not exists public.users (
-    id text primary key default gen_random_uuid()::text,
-    email text unique not null,
-    password text not null,
-    first_name text not null,
-    last_name text not null,
-    profile_image_url text,
-    role text not null default 'visitor',
-    is_approved boolean not null default false,
-    organization text,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    
-    constraint users_role_check check (role in ('visitor', 'member', 'admin'))
+-- 세션 테이블 생성
+CREATE TABLE IF NOT EXISTS sessions (
+  sid VARCHAR PRIMARY KEY,
+  sess JSON NOT NULL,
+  expire TIMESTAMP NOT NULL
 );
 
--- 게시판 카테고리 테이블
-create table if not exists public.board_categories (
-    id serial primary key,
-    name text not null,
-    slug text unique not null,
-    description text,
-    requires_auth boolean default false,
-    requires_approval boolean default false,
-    allowed_roles text[],
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 세션 만료 시간 인덱스 생성
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions(expire);
+
+-- 사용자 테이블 생성
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR PRIMARY KEY,
+  email VARCHAR UNIQUE NOT NULL,
+  password VARCHAR NOT NULL,
+  name VARCHAR NOT NULL,
+  profile_image_url VARCHAR,
+  role VARCHAR DEFAULT 'visitor' NOT NULL,
+  is_approved BOOLEAN DEFAULT false NOT NULL,
+  organization VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 게시글 테이블
-create table if not exists public.posts (
-    id serial primary key,
-    title text not null,
-    content text not null,
-    author_id text references public.users(id) on delete cascade,
-    category_id integer references public.board_categories(id) on delete cascade,
-    is_notice boolean default false,
-    view_count integer default 0,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 게시판 카테고리 테이블 생성
+CREATE TABLE IF NOT EXISTS board_categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR NOT NULL,
+  slug VARCHAR UNIQUE NOT NULL,
+  description TEXT,
+  requires_auth BOOLEAN DEFAULT false NOT NULL,
+  requires_approval BOOLEAN DEFAULT false NOT NULL,
+  allowed_roles TEXT[],
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 댓글 테이블
-create table if not exists public.comments (
-    id serial primary key,
-    content text not null,
-    author_id text references public.users(id) on delete cascade,
-    post_id integer references public.posts(id) on delete cascade,
-    parent_id integer references public.comments(id) on delete cascade,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 게시글 테이블 생성
+CREATE TABLE IF NOT EXISTS posts (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  content TEXT NOT NULL,
+  author_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  category_id INTEGER REFERENCES board_categories(id) ON DELETE SET NULL,
+  is_notice BOOLEAN DEFAULT false NOT NULL,
+  view_count INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 슬라이더 이미지 테이블
-create table if not exists public.slider_images (
-    id serial primary key,
-    title text not null,
-    image_url text not null,
-    alt_text text,
-    is_active boolean default true,
-    "order" integer default 0,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- 댓글 테이블 생성
+CREATE TABLE IF NOT EXISTS comments (
+  id SERIAL PRIMARY KEY,
+  content TEXT NOT NULL,
+  author_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- 슬라이더 이미지 테이블 생성
+CREATE TABLE IF NOT EXISTS slider_images (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  image_url VARCHAR NOT NULL,
+  alt_text VARCHAR,
+  is_active BOOLEAN DEFAULT true NOT NULL,
+  "order" INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 초기 데이터 삽입
+INSERT INTO board_categories (name, slug, description, requires_auth, requires_approval, allowed_roles) 
+VALUES 
+  ('일반 공지', 'general-announcements', '모든 방문자가 볼 수 있는 공지사항', false, false, NULL),
+  ('채용 공고', 'job-postings', '구인 구직 정보', false, false, NULL),
+  ('회원 공지', 'member-notices', '회원 전용 공지사항', true, false, ARRAY['member', 'admin']),
+  ('소통 공간', 'communication', '회원 간 소통 공간', true, true, ARRAY['member', 'admin']),
+  ('사업 신청', 'business-application', '사업 신청 및 관련 공지', true, true, ARRAY['member', 'admin'])
+ON CONFLICT (slug) DO NOTHING;
 
 -- 인덱스 생성
 create index if not exists users_email_idx on public.users(email);

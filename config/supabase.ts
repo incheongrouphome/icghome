@@ -34,8 +34,7 @@ export interface Database {
           id: string
           email: string
           password: string
-          first_name: string
-          last_name: string
+          name: string
           profile_image_url: string | null
           role: string
           is_approved: boolean
@@ -47,8 +46,7 @@ export interface Database {
           id: string
           email: string
           password: string
-          first_name: string
-          last_name: string
+          name: string
           profile_image_url?: string | null
           role?: string
           is_approved?: boolean
@@ -60,8 +58,7 @@ export interface Database {
           id?: string
           email?: string
           password?: string
-          first_name?: string
-          last_name?: string
+          name?: string
           profile_image_url?: string | null
           role?: string
           is_approved?: boolean

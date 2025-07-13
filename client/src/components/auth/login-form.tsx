@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { LogIn, User, Settings, LogOut, UserPlus } from "lucide-react";
+import { LogIn, User, Settings, LogOut, UserPlus, Mail, CheckCircle, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { toast } from "@/hooks/use-toast";
@@ -20,13 +20,16 @@ interface LoginData {
 interface SignupData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
+  passwordConfirm: string;
+  name: string;
   organization?: string;
 }
 
+type EmailVerificationStep = 'input' | 'pending' | 'verified';
+
 export default function LoginForm() {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [emailVerificationStep, setEmailVerificationStep] = useState<EmailVerificationStep>('input');
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
@@ -38,9 +41,79 @@ export default function LoginForm() {
   const [signupData, setSignupData] = useState<SignupData>({
     email: '',
     password: '',
-    firstName: '',
-    lastName: '',
+    passwordConfirm: '',
+    name: '',
     organization: ''
+  });
+
+  // 비밀번호 일치 여부 계산
+  const passwordsMatch = signupData.password && signupData.passwordConfirm && signupData.password === signupData.passwordConfirm;
+  const passwordsNotMatch = signupData.password && signupData.passwordConfirm && signupData.password !== signupData.passwordConfirm;
+
+  // 이메일 확인 발송 뮤테이션
+  const emailVerificationMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await fetch('/api/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      setEmailVerificationStep('pending');
+      toast({
+        title: "이메일 발송 완료",
+        description: "이메일을 확인하여 인증을 완료해주세요.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "이메일 발송 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // 회원가입 뮤테이션
+  const signupMutation = useMutation({
+    mutationFn: async (data: SignupData) => {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "회원가입 성공",
+        description: data.message || "회원가입이 완료되었습니다.",
+      });
+      setIsSignupOpen(false);
+      setEmailVerificationStep('input');
+      setSignupData({ email: '', password: '', passwordConfirm: '', name: '', organization: '' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "회원가입 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   // 로그인 뮤테이션
@@ -71,39 +144,6 @@ export default function LoginForm() {
     onError: (error: Error) => {
       toast({
         title: "로그인 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // 회원가입 뮤테이션
-  const signupMutation = useMutation({
-    mutationFn: async (data: SignupData) => {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message);
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "회원가입 성공",
-        description: data.message,
-      });
-      setIsSignupOpen(false);
-      setSignupData({ email: '', password: '', firstName: '', lastName: '', organization: '' });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "회원가입 실패",
         description: error.message,
         variant: "destructive",
       });
@@ -153,9 +193,31 @@ export default function LoginForm() {
     loginMutation.mutate(loginData);
   };
 
+  const handleEmailVerification = () => {
+    if (!signupData.email) {
+      toast({
+        title: "입력 오류",
+        description: "이메일을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    emailVerificationMutation.mutate(signupData.email);
+  };
+
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signupData.email || !signupData.password || !signupData.firstName || !signupData.lastName) {
+    
+    if (emailVerificationStep !== 'verified') {
+      toast({
+        title: "이메일 확인 필요",
+        description: "이메일 확인을 먼저 완료해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!signupData.email || !signupData.password || !signupData.name) {
       toast({
         title: "입력 오류",
         description: "필수 정보를 모두 입력해주세요.",
@@ -163,11 +225,63 @@ export default function LoginForm() {
       });
       return;
     }
+
+    if (signupData.password !== signupData.passwordConfirm) {
+      toast({
+        title: "입력 오류",
+        description: "비밀번호가 일치하지 않습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     signupMutation.mutate(signupData);
   };
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  // 이메일 확인 상태 자동 체크
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (emailVerificationStep === 'pending' && signupData.email) {
+      // 5초마다 확인 상태 체크
+      interval = setInterval(() => {
+        checkEmailVerification();
+      }, 5000);
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [emailVerificationStep, signupData.email]);
+
+  // 이메일 확인 상태 체크 (실제로는 서버에서 확인 상태를 체크해야 함)
+  const checkEmailVerification = async () => {
+    try {
+      const response = await fetch('/api/auth/check-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupData.email }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.verified) {
+          setEmailVerificationStep('verified');
+          toast({
+            title: "이메일 확인 완료",
+            description: "이제 회원가입을 완료할 수 있습니다.",
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Email verification check failed:', error);
+    }
   };
 
   if (authLoading) {
@@ -194,13 +308,13 @@ export default function LoginForm() {
               <Avatar className="h-12 w-12">
                 <AvatarImage src={user.profileImageUrl || undefined} />
                 <AvatarFallback className="bg-primary text-white">
-                  {user.firstName?.[0] || user.email?.[0] || 'U'}
+                  {user.name?.[0] || user.email?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center space-x-2">
                   <p className="font-medium text-dark-gray">
-                    {user.firstName} {user.lastName}
+                    {user.name}
                   </p>
                   <Badge 
                     variant={user.role === 'admin' ? 'default' : user.role === 'member' ? 'secondary' : 'outline'}
@@ -224,21 +338,22 @@ export default function LoginForm() {
               <div className="mb-4">
                 <Link href="/admin">
                   <Button variant="outline" size="sm" className="w-full">
-                    <Settings className="mr-2 h-4 w-4" />
+                    <Settings className="mr-2" size={16} />
                     관리자 페이지
                   </Button>
                 </Link>
               </div>
             )}
             
-            <Button 
-              onClick={handleLogout}
+            {/* 로그아웃 버튼 */}
+            <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              onClick={handleLogout}
               disabled={logoutMutation.isPending}
+              className="w-full"
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="mr-2" size={16} />
               {logoutMutation.isPending ? '로그아웃 중...' : '로그아웃'}
             </Button>
           </CardContent>
@@ -298,66 +413,165 @@ export default function LoginForm() {
           >
             ID/PW 찾기
           </Button>
-          <Dialog open={isSignupOpen} onOpenChange={setIsSignupOpen}>
+          {/* 회원가입 다이얼로그 */}
+          <Dialog open={isSignupOpen} onOpenChange={(open) => {
+            setIsSignupOpen(open);
+            if (!open) {
+              setEmailVerificationStep('input');
+              setSignupData({ email: '', password: '', passwordConfirm: '', name: '', organization: '' });
+            }
+          }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="flex-1 text-xs">
                 회원가입
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>회원가입</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSignup} className="space-y-4">
-                <div>
-                  <Label htmlFor="signup-email">이메일</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={signupData.email}
-                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-password">비밀번호</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSignup} className="space-y-6">
+                {/* 이메일 확인 섹션 */}
+                <div className="space-y-4">
                   <div>
-                    <Label htmlFor="signup-firstName">이름</Label>
+                    <Label htmlFor="signup-email">이메일</Label>
+                    <div className="flex space-x-2 mt-1">
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        value={signupData.email}
+                        onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
+                        disabled={emailVerificationStep !== 'input'}
+                        className="flex-1"
+                        required
+                      />
+                      {emailVerificationStep === 'input' && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleEmailVerification}
+                          disabled={emailVerificationMutation.isPending || !signupData.email}
+                          className="whitespace-nowrap"
+                        >
+                          <Mail className="mr-2" size={16} />
+                          {emailVerificationMutation.isPending ? '발송 중...' : '이메일 확인'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 이메일 확인 상태 표시 */}
+                  {emailVerificationStep === 'pending' && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <Mail className="text-yellow-600" size={20} />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800">이메일 확인 대기 중</p>
+                          <p className="text-xs text-yellow-600 mt-1">
+                            {signupData.email}로 확인 이메일을 발송했습니다. 이메일을 확인하고 링크를 클릭해주세요.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            onClick={checkEmailVerification}
+                            className="p-0 h-auto text-xs text-yellow-700"
+                          >
+                            확인 상태 새로고침
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {emailVerificationStep === 'verified' && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle className="text-green-600" size={20} />
+                        <div>
+                          <p className="text-sm font-medium text-green-800">이메일 확인 완료</p>
+                          <p className="text-xs text-green-600 mt-1">
+                            이메일 인증이 완료되었습니다. 회원가입을 계속 진행하세요.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 나머지 입력 필드들 */}
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="signup-password">비밀번호</Label>
                     <Input
-                      id="signup-firstName"
-                      value={signupData.firstName}
-                      onChange={(e) => setSignupData({ ...signupData, firstName: e.target.value })}
+                      id="signup-password"
+                      type="password"
+                      value={signupData.password}
+                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                      placeholder="6자 이상 입력해주세요"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="signup-lastName">성</Label>
+                    <Label htmlFor="signup-password-confirm">비밀번호 확인</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password-confirm"
+                        type="password"
+                        value={signupData.passwordConfirm}
+                        onChange={(e) => setSignupData({ ...signupData, passwordConfirm: e.target.value })}
+                        placeholder="비밀번호를 다시 입력해주세요"
+                        className={`pr-10 ${
+                          passwordsMatch 
+                            ? 'border-green-500 focus:border-green-500 focus:ring-green-500' 
+                            : passwordsNotMatch 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                            : ''
+                        }`}
+                        required
+                      />
+                      {/* 비밀번호 일치 여부 아이콘 */}
+                      {signupData.passwordConfirm && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                          {passwordsMatch ? (
+                            <Check className="text-green-500" size={16} />
+                          ) : (
+                            <X className="text-red-500" size={16} />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {/* 비밀번호 일치 여부 메시지 */}
+                    {signupData.passwordConfirm && (
+                      <p className={`text-xs mt-1 ${
+                        passwordsMatch ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {passwordsMatch ? '✓ 비밀번호가 일치합니다' : '✗ 비밀번호가 일치하지 않습니다'}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="signup-name">이름</Label>
                     <Input
-                      id="signup-lastName"
-                      value={signupData.lastName}
-                      onChange={(e) => setSignupData({ ...signupData, lastName: e.target.value })}
+                      id="signup-name"
+                      value={signupData.name}
+                      onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                      placeholder="실명을 입력해주세요"
                       required
                     />
                   </div>
+                  <div>
+                    <Label htmlFor="signup-organization">소속 기관 (선택)</Label>
+                    <Input
+                      id="signup-organization"
+                      value={signupData.organization}
+                      onChange={(e) => setSignupData({ ...signupData, organization: e.target.value })}
+                      placeholder="소속 기관명을 입력해주세요"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="signup-organization">소속 기관 (선택)</Label>
-                  <Input
-                    id="signup-organization"
-                    value={signupData.organization}
-                    onChange={(e) => setSignupData({ ...signupData, organization: e.target.value })}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
+
+                <div className="flex justify-end space-x-2 pt-4">
                   <Button 
                     type="button" 
                     variant="outline" 
@@ -368,7 +582,8 @@ export default function LoginForm() {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={signupMutation.isPending}
+                    disabled={signupMutation.isPending || emailVerificationStep !== 'verified' || !passwordsMatch}
+                    className={passwordsMatch ? '' : 'opacity-50'}
                   >
                     {signupMutation.isPending ? '가입 중...' : '회원가입'}
                   </Button>

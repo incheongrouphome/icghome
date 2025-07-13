@@ -29,8 +29,7 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
   email: varchar("email").unique().notNull(),
   password: varchar("password").notNull(),
-  firstName: varchar("first_name").notNull(),
-  lastName: varchar("last_name").notNull(),
+  name: varchar("name").notNull(),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role").default("visitor").notNull(), // visitor, member, admin
   isApproved: boolean("is_approved").default(false).notNull(),
@@ -165,9 +164,12 @@ export const loginSchema = z.object({
 export const signupSchema = z.object({
   email: z.string().email("올바른 이메일을 입력해주세요"),
   password: z.string().min(6, "비밀번호는 6자 이상이어야 합니다"),
-  firstName: z.string().min(1, "이름을 입력해주세요"),
-  lastName: z.string().min(1, "성을 입력해주세요"),
+  passwordConfirm: z.string().min(6, "비밀번호 확인을 입력해주세요"),
+  name: z.string().min(1, "이름을 입력해주세요"),
   organization: z.string().optional(),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: "비밀번호가 일치하지 않습니다",
+  path: ["passwordConfirm"],
 });
 
 // Types

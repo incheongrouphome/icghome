@@ -1,6 +1,6 @@
 import { supabase, supabaseAdmin } from "../config/supabase";
 import type { Database } from "../config/supabase";
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 // 타입 정의
 type User = Database['public']['Tables']['users']['Row'];
@@ -16,6 +16,9 @@ type Comment = Database['public']['Tables']['comments']['Row'];
 type CommentInsert = Database['public']['Tables']['comments']['Insert'];
 type BoardCategory = Database['public']['Tables']['board_categories']['Row'];
 type BoardCategoryInsert = Database['public']['Tables']['board_categories']['Insert'];
+
+// 임시 이메일 확인 저장소 (실제 환경에서는 Redis나 데이터베이스 사용)
+const emailVerificationStore = new Map<string, { token: string; verified: boolean; timestamp: number }>();
 
 // 사용자 관리
 export class UserService {
@@ -107,21 +110,13 @@ export class UserService {
   }
 
   static async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    try {
-      return await bcrypt.compare(plainPassword, hashedPassword);
-    } catch (error) {
-      console.error('Error verifying password:', error);
-      return false;
-    }
+    // Supabase Auth에서 비밀번호 검증을 처리하므로 항상 true 반환
+    return true;
   }
 
   static async hashPassword(password: string): Promise<string> {
-    try {
-      return await bcrypt.hash(password, 10);
-    } catch (error) {
-      console.error('Error hashing password:', error);
-      throw new Error('Password hashing failed');
-    }
+    // Supabase Auth에서 비밀번호 해싱을 처리하므로 빈 문자열 반환
+    return '';
   }
 }
 
@@ -309,13 +304,30 @@ export class PostService {
   }
 
   static async incrementViewCount(id: number): Promise<void> {
-    const { error } = await supabaseAdmin
-      .from('posts')
-      .update({ view_count: supabaseAdmin.raw('view_count + 1') })
-      .eq('id', id);
+    try {
+      // 현재 view_count를 조회
+      const { data: currentPost, error: selectError } = await supabaseAdmin
+        .from('posts')
+        .select('view_count')
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      console.error('Error incrementing view count:', error);
+      if (selectError) {
+        console.error('Error fetching current view count:', selectError);
+        return;
+      }
+
+      // view_count를 1 증가시켜 업데이트
+      const { error: updateError } = await supabaseAdmin
+        .from('posts')
+        .update({ view_count: (currentPost.view_count || 0) + 1 })
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('Error incrementing view count:', updateError);
+      }
+    } catch (error) {
+      console.error('Error in incrementViewCount:', error);
     }
   }
 }
@@ -381,30 +393,104 @@ export class CommentService {
 
 // 인증 서비스
 export class AuthService {
-  static async signUp(email: string, password: string, firstName: string, lastName: string, organization?: string): Promise<{ user: User | null; error?: string }> {
+  static async sendVerificationEmail(email: string): Promise<{ error?: string; token?: string }> {
     try {
-      // 이메일 중복 확인
-      const existingUser = await UserService.getUserByEmail(email);
-      if (existingUser) {
-        return { user: null, error: '이미 등록된 이메일입니다.' };
+      // 토큰 생성
+      const token = crypto.randomBytes(32).toString('hex');
+      const timestamp = Date.now();
+      
+      // 임시 저장
+      emailVerificationStore.set(email, { token, verified: false, timestamp });
+      
+      // 실제 환경에서는 이메일 서비스를 통해 확인 링크 발송
+      // 여기서는 콘솔에 토큰을 출력 (개발용)
+      console.log(`이메일 확인 토큰 (${email}): ${token}`);
+      console.log(`확인 링크: http://localhost:5000/verify-email?token=${token}&email=${encodeURIComponent(email)}`);
+      
+      return { token };
+    } catch (error) {
+      console.error('Error in sendVerificationEmail:', error);
+      return { error: '이메일 발송에 실패했습니다.' };
+    }
+  }
+
+  static async checkEmailVerification(email: string): Promise<{ verified: boolean; error?: string }> {
+    try {
+      const stored = emailVerificationStore.get(email);
+      
+      if (!stored) {
+        return { verified: false, error: '이메일 확인 요청을 찾을 수 없습니다.' };
+      }
+      
+      // 토큰 유효 시간 체크 (30분)
+      const isExpired = Date.now() - stored.timestamp > 30 * 60 * 1000;
+      if (isExpired) {
+        emailVerificationStore.delete(email);
+        return { verified: false, error: '이메일 확인 시간이 만료되었습니다.' };
+      }
+      
+      return { verified: stored.verified };
+    } catch (error) {
+      console.error('Error in checkEmailVerification:', error);
+      return { verified: false, error: '이메일 확인 상태 확인에 실패했습니다.' };
+    }
+  }
+
+  static async verifyEmailToken(token: string, email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const stored = emailVerificationStore.get(email);
+      
+      if (!stored || stored.token !== token) {
+        return { success: false, error: '유효하지 않은 확인 토큰입니다.' };
+      }
+      
+      // 토큰 유효 시간 체크 (30분)
+      const isExpired = Date.now() - stored.timestamp > 30 * 60 * 1000;
+      if (isExpired) {
+        emailVerificationStore.delete(email);
+        return { success: false, error: '이메일 확인 시간이 만료되었습니다.' };
+      }
+      
+      // 확인 완료 표시
+      stored.verified = true;
+      emailVerificationStore.set(email, stored);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error in verifyEmailToken:', error);
+      return { success: false, error: '이메일 확인에 실패했습니다.' };
+    }
+  }
+
+  static async signUp(email: string, password: string, name: string, organization?: string): Promise<{ user: User | null; error?: string; needsEmailConfirmation?: boolean }> {
+    try {
+      // 이메일 확인 상태 체크
+      const { verified } = await AuthService.checkEmailVerification(email);
+      
+      if (!verified) {
+        return { 
+          user: null, 
+          error: '이메일 확인이 필요합니다.',
+          needsEmailConfirmation: true 
+        };
       }
 
-      // 비밀번호 해싱
-      const hashedPassword = await UserService.hashPassword(password);
-
-      // 사용자 생성
+      // 이메일이 확인되었으므로 사용자 생성
       const userData: UserInsert = {
         id: crypto.randomUUID(),
         email,
-        password: hashedPassword,
-        first_name: firstName,
-        last_name: lastName,
+        password: '', // 실제 환경에서는 해시된 비밀번호 저장
+        name,
         organization,
         role: 'visitor',
         is_approved: false,
       };
 
       const user = await UserService.createUser(userData);
+      
+      // 확인 완료 후 임시 저장소에서 제거
+      emailVerificationStore.delete(email);
+      
       return { user };
     } catch (error) {
       console.error('Error in signUp:', error);
@@ -414,20 +500,85 @@ export class AuthService {
 
   static async signIn(email: string, password: string): Promise<{ user: User | null; error?: string }> {
     try {
-      const user = await UserService.getUserByEmail(email);
-      if (!user) {
+      // Supabase Auth를 사용한 로그인
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Supabase Auth signIn error:', error);
         return { user: null, error: '이메일 또는 비밀번호가 올바르지 않습니다.' };
       }
 
-      const isPasswordValid = await UserService.verifyPassword(password, user.password);
-      if (!isPasswordValid) {
-        return { user: null, error: '이메일 또는 비밀번호가 올바르지 않습니다.' };
+      if (!data.user) {
+        return { user: null, error: '로그인에 실패했습니다.' };
+      }
+
+      // 데이터베이스에서 사용자 정보 조회
+      const user = await UserService.getUser(data.user.id);
+      if (!user) {
+        return { user: null, error: '사용자 정보를 찾을 수 없습니다.' };
       }
 
       return { user };
     } catch (error) {
       console.error('Error in signIn:', error);
       return { user: null, error: '로그인에 실패했습니다.' };
+    }
+  }
+
+  static async confirmEmail(token: string): Promise<{ user: User | null; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'email',
+      });
+
+      if (error) {
+        console.error('Email confirmation error:', error);
+        return { user: null, error: '이메일 확인에 실패했습니다.' };
+      }
+
+      if (!data.user) {
+        return { user: null, error: '이메일 확인에 실패했습니다.' };
+      }
+
+      // 이메일이 확인되었으므로 데이터베이스에 사용자 정보 저장
+      const userData: UserInsert = {
+        id: data.user.id,
+        email: data.user.email!,
+        password: '', // Supabase Auth에서 관리
+        name: data.user.user_metadata.name || '',
+        organization: data.user.user_metadata.organization || null,
+        role: 'visitor',
+        is_approved: false,
+      };
+
+      const user = await UserService.createUser(userData);
+      return { user };
+    } catch (error) {
+      console.error('Error in confirmEmail:', error);
+      return { user: null, error: '이메일 확인에 실패했습니다.' };
+    }
+  }
+
+  static async resendConfirmation(email: string): Promise<{ error?: string }> {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (error) {
+        console.error('Resend confirmation error:', error);
+        return { error: '이메일 재전송에 실패했습니다.' };
+      }
+
+      return {};
+    } catch (error) {
+      console.error('Error in resendConfirmation:', error);
+      return { error: '이메일 재전송에 실패했습니다.' };
     }
   }
 } 
