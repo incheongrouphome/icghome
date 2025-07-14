@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Send, Upload, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Send, Upload, Image as ImageIcon, Paperclip } from "lucide-react";
 import type { InsertPost, PostWithAuthor } from "@shared/schema";
+import AttachmentList from "./attachment-list";
 import "react-quill/dist/quill.snow.css";
 
 // React Quill을 동적으로 import
@@ -82,12 +83,25 @@ export default function WritePost({ categoryId, categoryName, editPost, onCancel
   const modules = {
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
+      [{ 'color': [
+        '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+        '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
+        '#bbbbbb', '#f06666', '#ffc266', '#ffff66', '#66b966', '#66a3e0', '#c285ff',
+        '#888888', '#a10000', '#b26b00', '#b2b200', '#006100', '#0047b2', '#6b24b2',
+        '#444444', '#5c0000', '#663d00', '#666600', '#003700', '#002966', '#3d1466',
+        '#000000', '#000000', '#000000', '#000000', '#000000', '#000000', '#000000'
+      ] }, { 'background': [
+        '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+        '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
+        '#bbbbbb', '#f06666', '#ffc266', '#ffff66', '#66b966', '#66a3e0', '#c285ff',
+        '#888888', '#a10000', '#b26b00', '#b2b200', '#006100', '#0047b2', '#6b24b2',
+        '#444444', '#5c0000', '#663d00', '#666600', '#003700', '#002966', '#3d1466'
+      ] }],
       ['bold', 'italic', 'underline', 'strike'],
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'indent': '-1'}, { 'indent': '+1' }],
       ['link', 'image'],
       [{ 'align': [] }],
-      [{ 'color': [] }, { 'background': [] }],
       ['clean']
     ],
     clipboard: {
@@ -191,24 +205,21 @@ export default function WritePost({ categoryId, categoryName, editPost, onCancel
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-6xl mx-auto">
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>{isEditing ? '글수정' : '글쓰기'} - {categoryName}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onCancel}
-                  className="flex items-center"
-                >
-                  <ArrowLeft size={16} className="mr-2" />
-                  목록으로
-                </Button>
-              </CardTitle>
-            </CardHeader>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{isEditing ? '글수정' : '글쓰기'} - {categoryName}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel}
+            className="flex items-center"
+          >
+            <ArrowLeft size={16} className="mr-2" />
+            목록으로
+          </Button>
+        </CardTitle>
+      </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
@@ -224,32 +235,42 @@ export default function WritePost({ categoryId, categoryName, editPost, onCancel
                 
                 <div className="space-y-2">
                   <Label htmlFor="content">내용</Label>
-                  <div className="bg-white border rounded-md">
-                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center">에디터를 로딩 중...</div>}>
-                      <ReactQuill
-                        value={content}
-                        onChange={setContent}
-                        modules={modules}
-                        formats={formats}
-                        style={{ height: '300px' }}
-                        placeholder="내용을 입력하세요. 이미지를 복사하여 붙여넣을 수 있습니다."
-                      />
-                    </Suspense>
+                  <div className="bg-white border rounded-md overflow-hidden">
+                    <div style={{ height: '600px' }} className="relative">
+                      <Suspense fallback={<div className="h-full flex items-center justify-center">에디터를 로딩 중...</div>}>
+                        <ReactQuill
+                          value={content}
+                          onChange={setContent}
+                          modules={modules}
+                          formats={formats}
+                          style={{ height: '100%' }}
+                          placeholder="내용을 입력하세요. 이미지를 복사하여 붙여넣을 수 있습니다."
+                        />
+                      </Suspense>
+                    </div>
                   </div>
                 </div>
 
+                {/* 첨부파일 섹션을 완전히 분리 */}
                 <div className="space-y-2">
-                  <Label>첨부파일</Label>
-                  <div className="flex items-center space-x-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center"
-                    >
-                      <Upload size={16} className="mr-2" />
-                      파일 선택
-                    </Button>
+                  <div className="bg-gray-50 border rounded-md p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="flex items-center text-sm font-medium">
+                        <Paperclip size={16} className="mr-2" />
+                        첨부파일
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center"
+                      >
+                        <Upload size={16} className="mr-2" />
+                        파일 선택
+                      </Button>
+                    </div>
+                    
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -258,25 +279,13 @@ export default function WritePost({ categoryId, categoryName, editPost, onCancel
                       className="hidden"
                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
                     />
+                    
+                    <AttachmentList 
+                      attachments={attachments} 
+                      onRemove={removeAttachment}
+                      className="mt-0"
+                    />
                   </div>
-                  
-                  {attachments.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-700">{file.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                          >
-                            삭제
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 
                 {user && (user as any).role === 'admin' ? (
@@ -316,8 +325,5 @@ export default function WritePost({ categoryId, categoryName, editPost, onCancel
               </form>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    </div>
   );
 } 

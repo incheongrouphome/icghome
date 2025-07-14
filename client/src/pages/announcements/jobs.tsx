@@ -1,9 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "wouter";
 import { Briefcase } from "lucide-react";
 import BoardList from "@/components/boards/board-list";
 import BoardHeader from "@/components/boards/board-header";
+import PostDetail from "@/components/boards/post-detail";
 
 export default function JobPostings() {
+  const [, params] = useRoute("/announcements/jobs/:id?");
+  const postId = params?.id;
+
   // Query for post counts
   const { data: categoryData } = useQuery({
     queryKey: ["/api/categories", "job-postings"],
@@ -52,7 +57,17 @@ export default function JobPostings() {
             colorScheme="teal"
           />
 
-          <BoardList categorySlug="job-postings" />
+          {postId ? (
+            <div className="space-y-6">
+              <PostDetail categorySlug="job-postings" />
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">목록</h3>
+                <BoardList categorySlug="job-postings" isCompact={true} hideWriteButton={true} currentPostId={parseInt(postId)} />
+              </div>
+            </div>
+          ) : (
+            <BoardList categorySlug="job-postings" />
+          )}
         </div>
       </div>
     </div>

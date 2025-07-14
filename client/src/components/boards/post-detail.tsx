@@ -13,7 +13,7 @@ import type { PostWithAuthor } from "@shared/schema";
 import DOMPurify from 'dompurify';
 import Comments from "./comments";
 import WritePost from "./write-post";
-import ProtectedRoute from "@/components/auth/protected-route";
+
 import "react-quill/dist/quill.snow.css";
 
 interface PostDetailProps {
@@ -100,7 +100,9 @@ export default function PostDetail({ categorySlug }: PostDetailProps) {
   };
 
   const handleBack = () => {
-    window.location.href = getBackUrl();
+    // URL에서 ID 부분을 제거하여 목록으로 돌아가기
+    const backUrl = getBackUrl();
+    window.location.href = backUrl;
   };
 
   const handleDelete = () => {
@@ -150,63 +152,42 @@ export default function PostDetail({ categorySlug }: PostDetailProps) {
 
   if (isLoading) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-          <div className="container mx-auto px-4 py-16">
-            <div className="max-w-6xl mx-auto">
-              <div className="h-96 bg-gray-100 rounded-lg animate-pulse mt-8"></div>
-            </div>
-          </div>
-        </div>
-      </ProtectedRoute>
+      <div className="h-96 bg-gray-100 rounded-lg animate-pulse mt-8"></div>
     );
   }
 
   if (!post) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-          <div className="container mx-auto px-4 py-16">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mt-8">
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">게시글을 찾을 수 없습니다</h1>
-                <Button onClick={handleBack} variant="outline">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  목록으로 돌아가기
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </ProtectedRoute>
+      <div className="text-center mt-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">게시글을 찾을 수 없습니다</h1>
+        <Button onClick={handleBack} variant="outline">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          목록으로 돌아가기
+        </Button>
+      </div>
     );
   }
 
   if (isEditing && category) {
     return (
-      <ProtectedRoute>
-        <WritePost
-          categoryId={(category as any).id}
-          categoryName={(category as any).name}
-          editPost={post}
-          onCancel={() => setIsEditing(false)}
-          onSuccess={handleEditSuccess}
-        />
-      </ProtectedRoute>
+      <WritePost
+        categoryId={(category as any).id}
+        categoryName={(category as any).name}
+        editPost={post}
+        onCancel={() => setIsEditing(false)}
+        onSuccess={handleEditSuccess}
+      />
     );
   }
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-        <div className="container mx-auto px-4 py-16">
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-6">
-              <Button onClick={handleBack} variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                목록으로 돌아가기
-              </Button>
-            </div>
+    <div className="space-y-6">
+      <div className="mb-6">
+        <Button onClick={handleBack} variant="outline">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          목록으로 돌아가기
+        </Button>
+      </div>
             
             <Card className="w-full">
               <CardHeader>
@@ -305,9 +286,6 @@ export default function PostDetail({ categorySlug }: PostDetailProps) {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </div>
-    </ProtectedRoute>
+    </div>
   );
 } 

@@ -403,9 +403,7 @@ export class AuthService {
       emailVerificationStore.set(email, { token, verified: false, timestamp });
       
       // 실제 환경에서는 이메일 서비스를 통해 확인 링크 발송
-      // 여기서는 콘솔에 토큰을 출력 (개발용)
-      console.log(`이메일 확인 토큰 (${email}): ${token}`);
-      console.log(`확인 링크: http://localhost:5000/verify-email?token=${token}&email=${encodeURIComponent(email)}`);
+      // 개발 환경에서는 토큰을 로그에 출력하지 않음 (보안상 위험)
       
       return { token };
     } catch (error) {

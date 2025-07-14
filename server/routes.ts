@@ -5,6 +5,9 @@ import session from "express-session";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from "fs";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth";
 import { AuthService } from "./supabase-api";
@@ -22,9 +25,58 @@ import {
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // 보안 헤더 설정
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  // CORS 설정
+  app.use(cors({
+    origin: process.env.NODE_ENV === 'production' 
+      ? process.env.FRONTEND_URL || false 
+      : 'http://localhost:5000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  }));
+
+  // Rate Limiting 설정
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15분
+    max: 5, // 최대 5회 시도
+    message: { message: '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15분
+    max: 100, // 최대 100회 요청
+    message: { message: '너무 많은 요청이 있었습니다. 잠시 후 다시 시도해주세요.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // 일반 API에 Rate Limiting 적용
+  app.use('/api/', generalLimiter);
+
   // 세션 미들웨어 설정
+  if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET environment variable must be set in production');
+  }
+  
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    secret: process.env.SESSION_SECRET || 'dev-secret-key-not-for-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -286,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 회원가입 API (Supabase 이메일 인증 사용)
-  app.post('/api/auth/signup', async (req, res) => {
+  app.post('/api/auth/signup', authLimiter, async (req, res) => {
     try {
       const userData: SignupData = signupSchema.parse(req.body);
       
@@ -372,38 +424,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // 로그인 API
-  app.post('/api/auth/login', async (req, res) => {
+  app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
       const { email, password }: LoginData = loginSchema.parse(req.body);
-      console.log(`Login attempt: email=${email}, password=${password}`);
       
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        console.log('User not found');
         return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다' });
       }
 
-      console.log('User found:', { id: user.id, email: user.email, role: user.role });
-      console.log('Stored password hash:', user.password);
-      console.log('Input password:', password);
-
       const isValidPassword = await comparePassword(password, user.password);
-      console.log('Password comparison result:', isValidPassword);
       
-      // 개발 환경에서는 평문 비밀번호도 허용
-      const isPlainTextMatch = process.env.NODE_ENV === 'development' && password === 'password123';
-      console.log('Plain text match (dev only):', isPlainTextMatch);
-      
-      if (!isValidPassword && !isPlainTextMatch) {
-        console.log('Password validation failed');
+      if (!isValidPassword) {
         return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다' });
       }
 
       // 세션에 사용자 ID 저장
       req.session.userId = user.id;
-      console.log('Login successful, session created');
-      console.log('Session ID:', req.sessionID);
-      console.log('Session data:', req.session);
 
       // 패스워드 제거한 공개 사용자 정보 반환
       const { password: _, ...publicUser } = user;

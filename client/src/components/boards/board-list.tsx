@@ -12,15 +12,18 @@ import type { PostWithAuthor } from "@shared/schema";
 
 interface BoardListProps {
   categorySlug: string;
+  isCompact?: boolean; // 상세 페이지에서 사용할 때 컴팩트 모드
+  hideWriteButton?: boolean; // 글쓰기 버튼 숨김
+  currentPostId?: number; // 현재 게시글 ID (하이라이트용)
 }
 
-export default function BoardList({ categorySlug }: BoardListProps) {
+export default function BoardList({ categorySlug, isCompact = false, hideWriteButton = false, currentPostId }: BoardListProps) {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchCategory, setSearchCategory] = useState("제목");
   const [isWriting, setIsWriting] = useState(false);
-  const postsPerPage = 10;
+  const postsPerPage = isCompact ? 5 : 10;
 
   const { data: category } = useQuery({
     queryKey: ["/api/categories", categorySlug],
@@ -152,8 +155,9 @@ export default function BoardList({ categorySlug }: BoardListProps) {
         ) : (
           currentPosts.map((post: PostWithAuthor, index) => {
             const postNumber = filteredPosts.length - (startIndex + index);
+            const isCurrentPost = currentPostId === post.id;
             return (
-              <div key={post.id} className="grid grid-cols-18 border-b border-gray-200 hover:bg-gray-50 transition-colors text-sm">
+              <div key={post.id} className={`grid grid-cols-18 border-b border-gray-200 hover:bg-gray-50 transition-colors text-sm ${isCurrentPost ? 'bg-blue-50 border-blue-200' : ''}`}>
                 <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
                   {post.isNotice ? (
                     <span className="text-red-600 font-medium">공지</span>
@@ -192,113 +196,145 @@ export default function BoardList({ categorySlug }: BoardListProps) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center space-x-1 mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0"
-          >
-            &lt;&lt;
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8 p-0"
-          >
-            &lt;
-          </Button>
-          
-          {getPageNumbers().map((pageNum) => (
-            <Button
-              key={pageNum}
-              variant={currentPage === pageNum ? "default" : "outline"}
-              size="sm"
-              onClick={() => setCurrentPage(pageNum)}
-              className="h-8 w-8 p-0"
-            >
-              {pageNum}
-            </Button>
-          ))}
-          
-          {totalPages > 10 && currentPage < totalPages - 5 && (
+          {isCompact ? (
+            // 간단한 페이지네이션 (compact 모드)
             <>
-              <span className="text-gray-500">...</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="h-8 px-3"
+              >
+                이전
+              </Button>
+              <span className="text-sm text-gray-600 px-3">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="h-8 px-3"
+              >
+                다음
+              </Button>
+            </>
+          ) : (
+            // 기본 페이지네이션
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+              >
+                &lt;&lt;
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+              >
+                &lt;
+              </Button>
+              
+              {getPageNumbers().map((pageNum) => (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="h-8 w-8 p-0"
+                >
+                  {pageNum}
+                </Button>
+              ))}
+              
+              {totalPages > 10 && currentPage < totalPages - 5 && (
+                <>
+                  <span className="text-gray-500">...</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="h-8 w-8 p-0"
+                  >
+                    {totalPages}
+                  </Button>
+                </>
+              )}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0"
+              >
+                &gt;
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
                 className="h-8 w-8 p-0"
               >
-                {totalPages}
+                &gt;&gt;
               </Button>
             </>
           )}
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="h-8 w-8 p-0"
-          >
-            &gt;
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="h-8 w-8 p-0"
-          >
-            &gt;&gt;
-          </Button>
         </div>
       )}
 
       {/* Search Section and Write Button */}
-      <div className="flex justify-between items-center mt-4">
-        <div className="flex-1"></div>
-        <div className="flex items-center space-x-2">
-          <Select value={searchCategory} onValueChange={setSearchCategory}>
-            <SelectTrigger className="w-20 h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="제목">제목</SelectItem>
-              <SelectItem value="내용">내용</SelectItem>
-              <SelectItem value="소속">소속</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            placeholder="검색어 입력"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-48 h-8 text-sm"
-          />
-          <Button 
-            size="sm" 
-            onClick={() => setCurrentPage(1)}
-            className="h-8 bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            검색
-          </Button>
-        </div>
-        <div className="flex-1 flex justify-end">
-          {canWrite && (
+      {!isCompact && (
+        <div className="flex justify-between items-center mt-4">
+          <div className="flex-1"></div>
+          <div className="flex items-center space-x-2">
+            <Select value={searchCategory} onValueChange={setSearchCategory}>
+              <SelectTrigger className="w-20 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="제목">제목</SelectItem>
+                <SelectItem value="내용">내용</SelectItem>
+                <SelectItem value="소속">소속</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="검색어 입력"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-48 h-8 text-sm"
+            />
             <Button 
-              size="sm"
-              className="h-8 bg-green-500 hover:bg-green-600 text-white flex items-center"
-              onClick={() => setIsWriting(true)}
+              size="sm" 
+              onClick={() => setCurrentPage(1)}
+              className="h-8 bg-blue-500 hover:bg-blue-600 text-white"
             >
-              <Plus size={14} className="mr-1" />
-              글쓰기
+              검색
             </Button>
-          )}
+          </div>
+          <div className="flex-1 flex justify-end">
+            {canWrite && !hideWriteButton && (
+              <Button 
+                size="sm"
+                className="h-8 bg-green-500 hover:bg-green-600 text-white flex items-center"
+                onClick={() => setIsWriting(true)}
+              >
+                <Plus size={14} className="mr-1" />
+                글쓰기
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

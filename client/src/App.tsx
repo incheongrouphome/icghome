@@ -26,8 +26,6 @@ import Members from "@/pages/members";
 import MemberNotices from "@/pages/members/notices";
 import Communication from "@/pages/members/communication";
 import Application from "@/pages/members/application";
-import PostDetail from "@/components/boards/post-detail";
-
 // Announcements submenu pages
 import GeneralAnnouncements from "@/pages/announcements/general";
 import JobPostings from "@/pages/announcements/jobs";
@@ -53,26 +51,16 @@ function Router() {
             </ProtectedRoute>
           </Route>
           <Route path="/members/notices" component={MemberNotices} />
-          <Route path="/members/notices/:id">
-            <PostDetail categorySlug="member-notices" />
-          </Route>
+          <Route path="/members/notices/:id" component={MemberNotices} />
           <Route path="/members/communication" component={Communication} />
-          <Route path="/members/communication/:id">
-            <PostDetail categorySlug="communication" />
-          </Route>
+          <Route path="/members/communication/:id" component={Communication} />
           <Route path="/members/application" component={Application} />
-          <Route path="/members/application/:id">
-            <PostDetail categorySlug="business-application" />
-          </Route>
+          <Route path="/members/application/:id" component={Application} />
           
           <Route path="/announcements/general" component={GeneralAnnouncements} />
-          <Route path="/announcements/general/:id">
-            <PostDetail categorySlug="general-notices" />
-          </Route>
+          <Route path="/announcements/general/:id" component={GeneralAnnouncements} />
           <Route path="/announcements/jobs" component={JobPostings} />
-          <Route path="/announcements/jobs/:id">
-            <PostDetail categorySlug="job-postings" />
-          </Route>
+          <Route path="/announcements/jobs/:id" component={JobPostings} />
           <Route path="/admin" component={Admin} />
           <Route path="/donation" component={Donation} />
           <Route component={NotFound} />

@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "wouter";
 import { FileText } from "lucide-react";
 import BoardList from "@/components/boards/board-list";
 import BoardHeader from "@/components/boards/board-header";
+import PostDetail from "@/components/boards/post-detail";
 import ProtectedRoute from "@/components/auth/protected-route";
 
 export default function MemberNotices() {
+  const [, params] = useRoute("/members/notices/:id?");
+  const postId = params?.id;
+
   // Query for post counts
   const { data: categoryData } = useQuery({
     queryKey: ["/api/categories", "member-notices"],
@@ -54,7 +59,17 @@ export default function MemberNotices() {
               colorScheme="blue"
             />
 
-            <BoardList categorySlug="member-notices" />
+            {postId ? (
+              <div className="space-y-6">
+                <PostDetail categorySlug="member-notices" />
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">목록</h3>
+                  <BoardList categorySlug="member-notices" isCompact={true} hideWriteButton={true} currentPostId={parseInt(postId)} />
+                </div>
+              </div>
+            ) : (
+              <BoardList categorySlug="member-notices" />
+            )}
           </div>
         </div>
       </div>

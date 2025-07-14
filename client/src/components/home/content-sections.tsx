@@ -124,9 +124,15 @@ export default function ContentSections() {
             className="flex items-center justify-between py-1.5 px-2 hover:bg-gray-50 rounded transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2 flex-1">
-              <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full border ${badgeColor}`}>
-                {badgeText}
-              </span>
+              {post.isNotice ? (
+                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full border text-red-700 bg-red-50 border-red-100">
+                  공지
+                </span>
+              ) : (
+                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full border opacity-0 pointer-events-none">
+                  공지
+                </span>
+              )}
               <a
                 href={getPostLink(post, categorySlug)}
                 className="text-xs text-dark-gray hover:text-primary transition-colors truncate"
@@ -164,9 +170,9 @@ export default function ContentSections() {
           </div>
           <Tabs defaultValue="notices" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-8">
-              <TabsTrigger value="notices" className="text-xs">회원공지</TabsTrigger>
-              <TabsTrigger value="communication" className="text-xs">소통공간</TabsTrigger>
-              <TabsTrigger value="applications" className="text-xs">사업신청</TabsTrigger>
+              <TabsTrigger value="notices" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-blue-500 hover:bg-blue-25 transition-all duration-200">회원공지</TabsTrigger>
+              <TabsTrigger value="communication" className="text-xs data-[state=active]:bg-green-50 data-[state=active]:text-green-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-green-500 hover:bg-green-25 transition-all duration-200">소통공간</TabsTrigger>
+              <TabsTrigger value="applications" className="text-xs data-[state=active]:bg-purple-50 data-[state=active]:text-purple-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-purple-500 hover:bg-purple-25 transition-all duration-200">사업신청</TabsTrigger>
             </TabsList>
             
             <TabsContent value="notices" className="mt-2">
@@ -213,8 +219,8 @@ export default function ContentSections() {
           </div>
           <Tabs defaultValue="public" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-8">
-              <TabsTrigger value="public" className="text-xs">열린공지</TabsTrigger>
-              <TabsTrigger value="jobs" className="text-xs">채용공고</TabsTrigger>
+              <TabsTrigger value="public" className="text-xs data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 hover:bg-orange-25 transition-all duration-200">열린공지</TabsTrigger>
+              <TabsTrigger value="jobs" className="text-xs data-[state=active]:bg-teal-50 data-[state=active]:text-teal-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-teal-500 hover:bg-teal-25 transition-all duration-200">채용공고</TabsTrigger>
             </TabsList>
             
             <TabsContent value="public" className="mt-2">

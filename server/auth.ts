@@ -30,24 +30,16 @@ export const generateUserId = (): string => {
 
 export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    console.log('Auth check - Session ID:', req.sessionID);
-    console.log('Auth check - Session data:', req.session);
-    
     const userId = req.session?.userId;
-    console.log('Auth check - User ID from session:', userId);
     
     if (!userId) {
-      console.log('Auth check - No user ID in session');
       return res.status(401).json({ message: '로그인이 필요합니다' });
     }
 
     const user = await storage.getUser(userId);
     if (!user) {
-      console.log('Auth check - User not found for ID:', userId);
       return res.status(401).json({ message: '사용자를 찾을 수 없습니다' });
     }
-
-    console.log('Auth check - User found:', { id: user.id, email: user.email, role: user.role });
 
     // 패스워드 제거한 공개 사용자 정보
     const { password, ...publicUser } = user;

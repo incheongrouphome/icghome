@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRoute } from "wouter";
 import { Users } from "lucide-react";
 import BoardList from "@/components/boards/board-list";
 import BoardHeader from "@/components/boards/board-header";
+import PostDetail from "@/components/boards/post-detail";
 import ProtectedRoute from "@/components/auth/protected-route";
 
 export default function Application() {
+  const [, params] = useRoute("/members/application/:id?");
+  const postId = params?.id;
+
   // Query for post counts
   const { data: categoryData } = useQuery({
     queryKey: ["/api/categories", "business-application"],
@@ -49,12 +54,22 @@ export default function Application() {
             <BoardHeader
               icon={Users}
               title="사업신청"
-              description="각종 사업 참가 신청 및 관련 공지사항입니다. 인가회원만 작성 및 열람 가능합니다."
+              description="각종 사업 신청과 관련된 정보를 공유하는 공간입니다. 승인된 회원만 작성할 수 있습니다."
               stats={stats}
               colorScheme="purple"
             />
 
-            <BoardList categorySlug="business-application" />
+            {postId ? (
+              <div className="space-y-6">
+                <PostDetail categorySlug="business-application" />
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">목록</h3>
+                  <BoardList categorySlug="business-application" isCompact={true} hideWriteButton={true} currentPostId={parseInt(postId)} />
+                </div>
+              </div>
+            ) : (
+              <BoardList categorySlug="business-application" />
+            )}
           </div>
         </div>
       </div>
