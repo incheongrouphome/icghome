@@ -30,8 +30,10 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  findUserByNameAndOrganization(name: string, organization?: string): Promise<User | undefined>;
   createUser(userData: SignupData): Promise<PublicUser>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
   updateUserRole(userId: string, role: string, isApproved: boolean): Promise<User>;
   getPendingUsers(): Promise<User[]>;
   
@@ -80,7 +82,7 @@ export class MockStorage implements IStorage {
     {
       id: 'admin_001',
       email: 'admin@example.com',
-      password: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', // password123
+      password: '$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq', // password123
       name: '관리자',
       profileImageUrl: null,
       role: 'admin',
@@ -95,7 +97,7 @@ export class MockStorage implements IStorage {
     {
       id: 'user_001',
       email: 'user1@example.com',
-      password: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', // password123
+      password: '$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq', // password123
       name: '홍길동',
       profileImageUrl: null,
       role: 'visitor',
@@ -107,7 +109,7 @@ export class MockStorage implements IStorage {
     {
       id: 'user_002',
       email: 'user2@example.com',
-      password: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', // password123
+      password: '$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq', // password123
       name: '김영희',
       profileImageUrl: null,
       role: 'visitor',
@@ -122,7 +124,7 @@ export class MockStorage implements IStorage {
     {
       id: 'approved_001',
       email: 'user@example.com',
-      password: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', // password123
+      password: '$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq', // password123
       name: '이승민',
       profileImageUrl: null,
       role: 'member',
@@ -231,14 +233,28 @@ export class MockStorage implements IStorage {
 
   async getUser(id: string): Promise<User | undefined> {
     console.log(`Mock: getUser called with id: ${id}`);
-    const allUsers = [...this.mockUsers, ...this.mockPendingUsers];
+    const allUsers = [...this.mockUsers, ...this.mockPendingUsers, ...this.mockApprovedUsers];
     return allUsers.find(user => user.id === id);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     console.log(`Mock: getUserByEmail called with email: ${email}`);
-    const allUsers = [...this.mockUsers, ...this.mockPendingUsers];
+    const allUsers = [...this.mockUsers, ...this.mockPendingUsers, ...this.mockApprovedUsers];
     return allUsers.find(user => user.email === email);
+  }
+
+  async findUserByNameAndOrganization(name: string, organization?: string): Promise<User | undefined> {
+    console.log(`Mock: findUserByNameAndOrganization called with name: ${name}, organization: ${organization}`);
+    const allUsers = [...this.mockUsers, ...this.mockPendingUsers, ...this.mockApprovedUsers];
+    
+    return allUsers.find(user => {
+      const nameMatch = user.name.toLowerCase().includes(name.toLowerCase());
+      const organizationMatch = organization 
+        ? user.organization?.toLowerCase().includes(organization.toLowerCase()) 
+        : true;
+      
+      return nameMatch && organizationMatch;
+    });
   }
 
   async createUser(userData: SignupData): Promise<PublicUser> {
@@ -278,6 +294,22 @@ export class MockStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    console.log(`Mock: updateUser called with id: ${id}, updates:`, updates);
+    const allUsers = [...this.mockUsers, ...this.mockPendingUsers, ...this.mockApprovedUsers];
+    const userIndex = allUsers.findIndex(user => user.id === id);
+    
+    if (userIndex === -1) {
+      throw new Error('User not found');
+    }
+    
+    const user = allUsers[userIndex];
+    Object.assign(user, updates);
+    user.updatedAt = new Date();
+    
+    return user;
   }
 
   async updateUserRole(userId: string, role: string, isApproved: boolean): Promise<User> {
@@ -581,6 +613,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async findUserByNameAndOrganization(name: string, organization?: string): Promise<User | undefined> {
+    if (!db) throw new Error("Database not connected");
+    
+    const conditions = [
+      sql`LOWER(${users.name}) LIKE LOWER(${`%${name}%`})`
+    ];
+    
+    if (organization) {
+      conditions.push(
+        sql`LOWER(${users.organization}) LIKE LOWER(${`%${organization}%`})`
+      );
+    }
+    
+    const [user] = await db.select().from(users).where(and(...conditions));
+    return user;
+  }
+
   async createUser(userData: SignupData): Promise<PublicUser> {
     if (!db) throw new Error("Database not connected");
     const hashedPassword = await hashPassword(userData.password);
@@ -611,6 +660,16 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    if (!db) throw new Error("Database not connected");
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }

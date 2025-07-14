@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import type { SliderImage } from "@shared/schema";
 
 const slides = [
   {
@@ -32,24 +34,44 @@ const slides = [
 export default function HeroSlider() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // 슬라이더 이미지를 서버에서 가져오기
+  const { data: sliderImages = [] } = useQuery<SliderImage[]>({
+    queryKey: ["/api/slider-images"],
+    queryFn: async () => {
+      const response = await fetch('/api/slider-images');
+      if (!response.ok) {
+        throw new Error('Failed to fetch slider images');
+      }
+      return response.json();
+    },
+  });
+
+  // 활성화된 이미지만 필터링하고 순서대로 정렬
+  const activeImages = sliderImages
+    .filter(img => img.isActive)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  // 이미지가 있으면 이미지를 사용하고, 없으면 기본 슬라이드 사용
+  const slidesToShow = activeImages.length > 0 ? activeImages : slides;
+
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % slidesToShow.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [slidesToShow.length]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
+    setCurrentSlide((prev) => (prev + 1) % slidesToShow.length);
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+    setCurrentSlide((prev) => (prev - 1 + slidesToShow.length) % slidesToShow.length);
   };
 
   const handleButtonClick = (href: string) => {
@@ -61,9 +83,21 @@ export default function HeroSlider() {
     }
   };
 
+  const currentSlideData = slidesToShow[currentSlide];
+  const isSliderImage = 'imageUrl' in currentSlideData;
+
   return (
-    <div className="hero-slider rounded-2xl overflow-hidden relative shadow-soft">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary to-info opacity-90"></div>
+    <div className="hero-slider rounded-2xl overflow-hidden relative shadow-soft h-80">
+      {/* 배경 이미지 또는 그라데이션 */}
+      {isSliderImage ? (
+        <img 
+          src={currentSlideData.imageUrl}
+          alt={currentSlideData.altText || currentSlideData.title}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-r from-primary to-info"></div>
+      )}
       
       {/* Navigation Arrows */}
       <button 
@@ -80,37 +114,39 @@ export default function HeroSlider() {
         <ChevronRight className="text-white" size={20} />
       </button>
       
-      {/* Content */}
-      <div className="relative h-full flex items-center justify-center text-white text-center p-8">
-        <div className="max-w-2xl">
-          <h2 className="text-3xl font-bold mb-4 transition-all duration-500">
-            {slides[currentSlide].title}
-          </h2>
-          <p className="text-xl mb-6 transition-all duration-500">
-            {slides[currentSlide].subtitle}
-          </p>
-          <div className="space-x-4">
-            {slides[currentSlide].buttons.map((button, index) => (
-              <Button
-                key={index}
-                onClick={() => handleButtonClick(button.href)}
-                variant={button.variant}
-                className={
-                  button.variant === "default" 
-                    ? "bg-white text-primary hover:bg-gray-100" 
-                    : "border-2 border-white text-white hover:bg-white hover:text-primary"
-                }
-              >
-                {button.text}
-              </Button>
-            ))}
+      {/* Content - 기본 슬라이드인 경우만 텍스트 표시 */}
+      {!isSliderImage && (
+        <div className="absolute inset-0 flex items-center justify-center text-white text-center p-8 z-10">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl font-bold mb-4 transition-all duration-500">
+              {currentSlideData.title}
+            </h2>
+            <p className="text-xl mb-6 transition-all duration-500">
+              {currentSlideData.subtitle}
+            </p>
+            <div className="space-x-4">
+              {currentSlideData.buttons.map((button, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleButtonClick(button.href)}
+                  variant={button.variant}
+                  className={
+                    button.variant === "default" 
+                      ? "bg-white text-primary hover:bg-gray-100" 
+                      : "border-2 border-white text-white hover:bg-white hover:text-primary"
+                  }
+                >
+                  {button.text}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Slider Controls */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {slides.map((_, index) => (
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+        {slidesToShow.map((_, index) => (
           <button
             key={index}
             onClick={() => goToSlide(index)}

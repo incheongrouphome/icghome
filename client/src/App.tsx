@@ -13,6 +13,7 @@ import Admin from "@/pages/admin";
 
 import Donation from "@/pages/donation";
 import NotFound from "@/pages/not-found";
+import VerifyEmailPage from "@/pages/verify-email";
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 
@@ -63,6 +64,7 @@ function Router() {
           <Route path="/announcements/jobs/:id" component={JobPostings} />
           <Route path="/admin" component={Admin} />
           <Route path="/donation" component={Donation} />
+          <Route path="/verify-email" component={VerifyEmailPage} />
           <Route component={NotFound} />
         </Switch>
       </main>

@@ -11,6 +11,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth";
 import { AuthService } from "./supabase-api";
+import { supabase } from "../config/supabase";
 import { 
   insertPostSchema, 
   insertCommentSchema, 
@@ -32,7 +33,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", ...(process.env.NODE_ENV === 'development' ? ["https://replit.com"] : [])],
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'"],
       },
@@ -131,6 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // 업로드된 파일 정적 서빙
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  
+  // 슬라이더 이미지 정적 서빙
+  app.use('/img', express.static(path.join(process.cwd(), 'client', 'src', 'img')));
 
   // 파일 업로드 API
   app.post('/api/upload', requireAuth, upload.single('file'), async (req: AuthRequest, res) => {
@@ -383,15 +387,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: '토큰이 필요합니다' });
       }
 
-      const { user, error } = await AuthService.confirmEmail(token);
+      // Supabase Auth를 통한 토큰 검증
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'email'
+      });
 
       if (error) {
-        return res.status(400).json({ message: error });
+        console.error('Token verification error:', error);
+        return res.status(400).json({ message: '유효하지 않은 토큰입니다' });
       }
 
+      if (!data.user) {
+        return res.status(400).json({ message: '사용자를 찾을 수 없습니다' });
+      }
+
+      // 이메일 확인 완료 - 사용자에게 성공 메시지 전송
       res.json({ 
-        message: '이메일이 확인되었습니다. 관리자 승인을 기다려주세요.',
-        user 
+        message: '이메일 확인이 완료되었습니다. 이제 회원가입을 진행할 수 있습니다.',
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          confirmed: true
+        }
       });
     } catch (error) {
       console.error('Email confirmation error:', error);
@@ -427,20 +445,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/login', authLimiter, async (req, res) => {
     try {
       const { email, password }: LoginData = loginSchema.parse(req.body);
+      console.log(`🔍 Login attempt for email: ${email}`);
       
       const user = await storage.getUserByEmail(email);
+      console.log(`🔍 User found:`, user ? `${user.email} (${user.role})` : 'null');
+      
       if (!user) {
+        console.log(`❌ No user found for email: ${email}`);
         return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다' });
       }
 
+      console.log(`🔍 Comparing password for user: ${user.email}`);
       const isValidPassword = await comparePassword(password, user.password);
+      console.log(`🔍 Password valid:`, isValidPassword);
       
       if (!isValidPassword) {
+        console.log(`❌ Invalid password for user: ${user.email}`);
         return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다' });
       }
 
       // 세션에 사용자 ID 저장
       req.session.userId = user.id;
+      console.log(`✅ Login successful for user: ${user.email}`);
 
       // 패스워드 제거한 공개 사용자 정보 반환
       const { password: _, ...publicUser } = user;
@@ -462,6 +488,227 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ message: '로그아웃 되었습니다' });
     });
+  });
+
+  // ID 찾기 API
+  app.post('/api/auth/find-id', async (req, res) => {
+    try {
+      const { name, organization } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({ message: '이름이 필요합니다' });
+      }
+
+      // 이름과 조직명으로 사용자 찾기
+      const user = await storage.findUserByNameAndOrganization(name, organization);
+      if (!user) {
+        return res.status(404).json({ message: '일치하는 사용자 정보를 찾을 수 없습니다' });
+      }
+
+      // 보안을 위해 이메일의 일부만 마스킹하여 표시
+      const email = user.email;
+      const [localPart, domain] = email.split('@');
+      const maskedEmail = localPart.length > 3 
+        ? `${localPart.slice(0, 3)}${'*'.repeat(localPart.length - 3)}@${domain}`
+        : `${localPart.slice(0, 1)}${'*'.repeat(localPart.length - 1)}@${domain}`;
+
+      res.json({ 
+        message: '등록된 이메일 정보를 찾았습니다',
+        id: maskedEmail,
+        fullId: user.email // 실제 사용 시에는 제거하고 이메일로 전송
+      });
+    } catch (error) {
+      console.error('Find ID error:', error);
+      res.status(500).json({ message: 'ID 찾기 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 비밀번호 재설정 요청 API
+  app.post('/api/auth/request-password-reset', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: '이메일이 필요합니다' });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: '등록되지 않은 이메일입니다' });
+      }
+
+      // 비밀번호 재설정 토큰 생성
+      const { error, token } = await AuthService.sendPasswordResetEmail(email);
+
+      if (error) {
+        return res.status(400).json({ message: error });
+      }
+
+      res.json({ 
+        message: '비밀번호 재설정 링크를 이메일로 전송했습니다',
+        email 
+      });
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      res.status(500).json({ message: '비밀번호 재설정 요청 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 비밀번호 재설정 실행 API
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, email, newPassword } = req.body;
+      
+      if (!token || !email || !newPassword) {
+        return res.status(400).json({ message: '필수 정보가 누락되었습니다' });
+      }
+
+      // 토큰 검증 및 비밀번호 재설정
+      const { success, error } = await AuthService.resetPassword(token, email, newPassword);
+
+      if (!success) {
+        return res.status(400).json({ message: error });
+      }
+
+      res.json({ 
+        message: '비밀번호가 성공적으로 변경되었습니다'
+      });
+    } catch (error) {
+      console.error('Password reset error:', error);
+      res.status(500).json({ message: '비밀번호 재설정 중 오류가 발생했습니다' });
+    }
+  });
+
+  // 비밀번호 재설정 페이지 (GET 방식)
+  app.get('/reset-password', async (req, res) => {
+    try {
+      const { token, email } = req.query;
+      
+      if (!token || !email) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #dc2626;">비밀번호 재설정 실패</h2>
+              <p>유효하지 않은 재설정 링크입니다.</p>
+              <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+            </body>
+          </html>
+        `);
+      }
+
+      // 토큰 검증
+      const { valid, error } = await AuthService.validateResetToken(token as string, email as string);
+
+      if (!valid) {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #dc2626;">비밀번호 재설정 실패</h2>
+              <p>${error || '유효하지 않거나 만료된 재설정 링크입니다.'}</p>
+              <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+            </body>
+          </html>
+        `);
+      }
+
+      res.send(`
+        <html>
+          <head>
+            <title>비밀번호 재설정</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 50px; background-color: #f5f5f5; }
+              .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+              .form-group { margin-bottom: 20px; }
+              label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+              input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; }
+              button { width: 100%; padding: 12px; background-color: #059669; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+              button:hover { background-color: #047857; }
+              .error { color: #dc2626; margin-top: 10px; }
+              .success { color: #16a34a; margin-top: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2 style="text-align: center; color: #333;">비밀번호 재설정</h2>
+              <form id="resetForm">
+                <div class="form-group">
+                  <label for="password">새 비밀번호</label>
+                  <input type="password" id="password" name="password" required minlength="6" placeholder="6자 이상 입력해주세요">
+                </div>
+                <div class="form-group">
+                  <label for="confirmPassword">비밀번호 확인</label>
+                  <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="비밀번호를 다시 입력해주세요">
+                </div>
+                <button type="submit" id="submitBtn">비밀번호 변경</button>
+                <div id="message"></div>
+              </form>
+            </div>
+            <script>
+              document.getElementById('resetForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const password = document.getElementById('password').value;
+                const confirmPassword = document.getElementById('confirmPassword').value;
+                const messageDiv = document.getElementById('message');
+                const submitBtn = document.getElementById('submitBtn');
+                
+                if (password !== confirmPassword) {
+                  messageDiv.innerHTML = '<div class="error">비밀번호가 일치하지 않습니다.</div>';
+                  return;
+                }
+                
+                if (password.length < 6) {
+                  messageDiv.innerHTML = '<div class="error">비밀번호는 6자 이상이어야 합니다.</div>';
+                  return;
+                }
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = '변경 중...';
+                
+                try {
+                  const response = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      token: '${token}',
+                      email: '${email}',
+                      newPassword: password
+                    })
+                  });
+                  
+                  const data = await response.json();
+                  
+                  if (response.ok) {
+                    messageDiv.innerHTML = '<div class="success">' + data.message + '</div>';
+                    setTimeout(() => {
+                      window.location.href = '/';
+                    }, 2000);
+                  } else {
+                    messageDiv.innerHTML = '<div class="error">' + data.message + '</div>';
+                  }
+                } catch (error) {
+                  messageDiv.innerHTML = '<div class="error">네트워크 오류가 발생했습니다.</div>';
+                }
+                
+                submitBtn.disabled = false;
+                submitBtn.textContent = '비밀번호 변경';
+              });
+            </script>
+          </body>
+        </html>
+      `);
+    } catch (error) {
+      console.error('Password reset page error:', error);
+      res.status(500).send(`
+        <html>
+          <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+            <h2 style="color: #dc2626;">서버 오류</h2>
+            <p>비밀번호 재설정 중 오류가 발생했습니다.</p>
+            <a href="/" style="color: #2563eb;">홈페이지로 돌아가기</a>
+          </body>
+        </html>
+      `);
+    }
   });
 
   // 현재 사용자 정보 조회
@@ -725,6 +972,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
+  app.get('/api/admin/system-status', requireAdmin, async (req: AuthRequest, res) => {
+    try {
+      const status = {
+        database: {
+          connected: !!process.env.DATABASE_URL,
+          type: process.env.DATABASE_URL ? 'PostgreSQL/Supabase' : 'MockStorage',
+          url: process.env.DATABASE_URL ? '***Connected***' : 'Not configured'
+        },
+        storage: {
+          uploadsDir: 'uploads/attachments',
+          imagesDir: 'client/src/img'
+        },
+        environment: process.env.NODE_ENV || 'development'
+      };
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching system status:", error);
+      res.status(500).json({ message: "Failed to fetch system status" });
+    }
+  });
+
   app.get('/api/admin/pending-users', requireAdmin, async (req: AuthRequest, res) => {
     try {
       const pendingUsers = await storage.getPendingUsers();
@@ -747,6 +1015,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to update user" });
     }
   });
+
+  // 슬라이더 이미지 업로드 미들웨어 설정
+  const sliderImageStorage = multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const dir = path.join(process.cwd(), 'client', 'src', 'img', 'slider');
+      try {
+        await fs.mkdir(dir, { recursive: true });
+        cb(null, dir);
+      } catch (error) {
+        cb(error as Error, dir);
+      }
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9가-힣]/g, '_');
+      cb(null, `slider-${baseName}-${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const uploadSliderImage = multer({ 
+    storage: sliderImageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB 제한
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        const error = new Error('이미지 파일만 업로드 가능합니다.') as any;
+        cb(error, false);
+      }
+    }
+  });
+
+  // 슬라이더 이미지 파일 업로드 API
+  app.post('/api/admin/slider-images/upload', (req: AuthRequest, res, next) => {
+    console.log('📤 슬라이더 이미지 업로드 요청 시작');
+    console.log('📍 요청 URL:', req.url);
+    console.log('📍 요청 메소드:', req.method);
+    console.log('📍 Content-Type:', req.get('Content-Type'));
+    
+    // 먼저 인증 확인
+    requireAdmin(req, res, (err) => {
+      if (err) {
+        console.log('❌ 인증 실패:', err.message);
+        return res.status(401).json({ message: '관리자 권한이 필요합니다.' });
+      }
+      
+      console.log('✅ 인증 통과 - 사용자:', req.user?.email, req.user?.role);
+      
+      // multer 미들웨어 실행
+      uploadSliderImage.single('image')(req, res, (multerErr) => {
+        if (multerErr) {
+          console.error('🚨 Multer 에러:', multerErr);
+          return res.status(400).json({ 
+            message: `파일 업로드 에러: ${multerErr.message}`,
+            error: multerErr.code 
+          });
+        }
+        
+        // 업로드 처리
+        handleSliderImageUpload(req as AuthRequest, res);
+      });
+    });
+  });
+
+  // 실제 업로드 처리 함수
+  async function handleSliderImageUpload(req: AuthRequest, res: express.Response) {
+    try {
+      console.log('📁 파일 업로드 처리 시작');
+      
+      if (!req.file) {
+        console.log('❌ 파일이 업로드되지 않음');
+        return res.status(400).json({ message: '이미지 파일이 업로드되지 않았습니다.' });
+      }
+
+      console.log('📁 업로드된 파일 정보:', {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path,
+        destination: req.file.destination
+      });
+
+      const imageUrl = `/img/slider/${req.file.filename}`;
+      
+      const result = {
+        success: true,
+        filename: req.file.filename,
+        originalFilename: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        imageUrl: imageUrl,
+        url: imageUrl
+      };
+      
+      console.log('✅ 슬라이더 이미지 업로드 성공:', result);
+      
+      // JSON 응답 확실히 보내기
+      res.set('Content-Type', 'application/json');
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error('🚨 슬라이더 이미지 업로드 에러:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: '이미지 업로드 중 오류가 발생했습니다.',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
 
   // Slider image routes
   app.get('/api/slider-images', async (req, res) => {

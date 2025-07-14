@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LogIn, User, Settings, LogOut, UserPlus, Mail, CheckCircle, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
@@ -27,8 +27,12 @@ interface SignupData {
 
 type EmailVerificationStep = 'input' | 'pending' | 'verified';
 
+type ForgotPasswordStep = 'choose' | 'find-id' | 'reset-password';
+
 export default function LoginForm() {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<ForgotPasswordStep>('choose');
   const [emailVerificationStep, setEmailVerificationStep] = useState<EmailVerificationStep>('input');
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -44,6 +48,14 @@ export default function LoginForm() {
     passwordConfirm: '',
     name: '',
     organization: ''
+  });
+
+  const [forgotPasswordData, setForgotPasswordData] = useState({
+    email: '',
+    name: '',
+    organization: '',
+    foundId: '',
+    isLoading: false
   });
 
   // 비밀번호 일치 여부 계산
@@ -180,6 +192,69 @@ export default function LoginForm() {
     },
   });
 
+  // ID 찾기 뮤테이션
+  const findIdMutation = useMutation({
+    mutationFn: async (data: { name: string; organization?: string }) => {
+      const response = await fetch('/api/auth/find-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setForgotPasswordData(prev => ({ ...prev, foundId: data.id }));
+      toast({
+        title: "ID 찾기 완료",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "ID 찾기 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // 비밀번호 재설정 요청 뮤테이션
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await fetch('/api/auth/request-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "비밀번호 재설정 요청 완료",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "비밀번호 재설정 요청 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginData.email || !loginData.password) {
@@ -240,6 +315,33 @@ export default function LoginForm() {
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  const handleFindId = () => {
+    if (!forgotPasswordData.name) {
+      toast({
+        title: "입력 오류",
+        description: "이름을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    findIdMutation.mutate({ 
+      name: forgotPasswordData.name, 
+      organization: forgotPasswordData.organization || undefined 
+    });
+  };
+
+  const handleResetPassword = () => {
+    if (!forgotPasswordData.email) {
+      toast({
+        title: "입력 오류",
+        description: "이메일을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    resetPasswordMutation.mutate(forgotPasswordData.email);
   };
 
   // 이메일 확인 상태 자동 체크
@@ -400,19 +502,139 @@ export default function LoginForm() {
         
         {/* 하단 버튼들 */}
         <div className="flex space-x-2 pt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 text-xs"
-            onClick={() => {
-              toast({
-                title: "준비중",
-                description: "ID/PW 찾기 기능은 준비중입니다.",
-              });
-            }}
-          >
-            ID/PW 찾기
-          </Button>
+          {/* ID/PW 찾기 다이얼로그 */}
+          <Dialog open={isForgotPasswordOpen} onOpenChange={(open) => {
+            setIsForgotPasswordOpen(open);
+            if (!open) {
+              setForgotPasswordStep('choose');
+              setForgotPasswordData({ email: '', name: '', organization: '', foundId: '', isLoading: false });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 text-xs">
+                ID/PW 찾기
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle>ID/PW 찾기</DialogTitle>
+                <DialogDescription>
+                  아이디나 비밀번호를 잊으셨나요? 이름과 조직명으로 아이디를 찾거나, 이메일로 비밀번호를 재설정할 수 있습니다.
+                </DialogDescription>
+              </DialogHeader>
+              
+              {forgotPasswordStep === 'choose' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    ID 찾기 또는 비밀번호 재설정을 선택해주세요.
+                  </p>
+                  
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={() => setForgotPasswordStep('find-id')}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      ID 찾기
+                    </Button>
+                    <Button 
+                      onClick={() => setForgotPasswordStep('reset-password')}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      비밀번호 재설정
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {forgotPasswordStep === 'find-id' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    가입 시 사용한 이름과 조직명을 입력해주세요.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <Input
+                      type="text"
+                      placeholder="이름"
+                      value={forgotPasswordData.name}
+                      onChange={(e) => setForgotPasswordData(prev => ({ ...prev, name: e.target.value }))}
+                      disabled={findIdMutation.isPending}
+                    />
+                    
+                    <Input
+                      type="text"
+                      placeholder="조직명 (선택사항)"
+                      value={forgotPasswordData.organization}
+                      onChange={(e) => setForgotPasswordData(prev => ({ ...prev, organization: e.target.value }))}
+                      disabled={findIdMutation.isPending}
+                    />
+                    
+                    {forgotPasswordData.foundId && (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                        <p className="text-sm text-green-800">
+                          <strong>찾은 ID:</strong> {forgotPasswordData.foundId}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => setForgotPasswordStep('choose')}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      뒤로
+                    </Button>
+                    <Button 
+                      onClick={handleFindId}
+                      disabled={findIdMutation.isPending}
+                      className="flex-1"
+                    >
+                      {findIdMutation.isPending ? 'ID 찾는 중...' : 'ID 찾기'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {forgotPasswordStep === 'reset-password' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    가입 시 사용한 이메일 주소를 입력해주세요. 비밀번호 재설정 링크를 이메일로 보내드립니다.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <Input
+                      type="email"
+                      placeholder="이메일 주소"
+                      value={forgotPasswordData.email}
+                      onChange={(e) => setForgotPasswordData(prev => ({ ...prev, email: e.target.value }))}
+                      disabled={resetPasswordMutation.isPending}
+                    />
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={() => setForgotPasswordStep('choose')}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      뒤로
+                    </Button>
+                    <Button 
+                      onClick={handleResetPassword}
+                      disabled={resetPasswordMutation.isPending}
+                      className="flex-1"
+                    >
+                      {resetPasswordMutation.isPending ? '요청 중...' : '재설정 요청'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
           {/* 회원가입 다이얼로그 */}
           <Dialog open={isSignupOpen} onOpenChange={(open) => {
             setIsSignupOpen(open);
@@ -429,6 +651,9 @@ export default function LoginForm() {
             <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>회원가입</DialogTitle>
+                <DialogDescription>
+                  한국아동청소년그룹홈협의회 인천지부 회원으로 가입하여 다양한 서비스를 이용해보세요.
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSignup} className="space-y-6">
                 {/* 이메일 확인 섹션 */}
