@@ -4,6 +4,7 @@ import {
   posts,
   comments,
   sliderImages,
+  attachments,
   type User,
   type UpsertUser,
   type BoardCategory,
@@ -14,6 +15,8 @@ import {
   type InsertComment,
   type SliderImage,
   type InsertSliderImage,
+  type Attachment,
+  type InsertAttachment,
   type PostWithAuthor,
   type CommentWithAuthor,
   type PublicUser,
@@ -47,7 +50,9 @@ export interface IStorage {
   
   // Comment operations
   getCommentsByPost(postId: number): Promise<CommentWithAuthor[]>;
+  getComment(id: number): Promise<Comment | undefined>;
   createComment(comment: InsertComment): Promise<Comment>;
+  updateComment(id: number, updates: Partial<InsertComment>): Promise<Comment>;
   deleteComment(id: number): Promise<void>;
   
   // Slider image operations
@@ -55,10 +60,22 @@ export interface IStorage {
   createSliderImage(image: InsertSliderImage): Promise<SliderImage>;
   updateSliderImage(id: number, updates: Partial<InsertSliderImage>): Promise<SliderImage>;
   deleteSliderImage(id: number): Promise<void>;
+  
+  // Attachment operations
+  getAttachmentsByPost(postId: number): Promise<Attachment[]>;
+  getAttachment(id: number): Promise<Attachment | undefined>;
+  createAttachment(attachment: InsertAttachment): Promise<Attachment>;
+  updateAttachment(id: number, updates: Partial<InsertAttachment>): Promise<Attachment>;
+  deleteAttachment(id: number): Promise<void>;
+  updateAttachmentPostId(filename: string, postId: number): Promise<void>;
 }
 
 // 개발환경용 Mock Storage
 export class MockStorage implements IStorage {
+  // 정적 변수로 모든 인스턴스가 같은 데이터를 공유하도록 함
+  private static mockComments: CommentWithAuthor[] = [];
+  private static nextCommentId = 1;
+  
   private mockUsers: User[] = [
     {
       id: 'admin_001',
@@ -210,6 +227,8 @@ export class MockStorage implements IStorage {
     },
   ];
 
+
+
   async getUser(id: string): Promise<User | undefined> {
     console.log(`Mock: getUser called with id: ${id}`);
     const allUsers = [...this.mockUsers, ...this.mockPendingUsers];
@@ -324,6 +343,13 @@ export class MockStorage implements IStorage {
       filteredPosts = this.mockPosts.filter(post => post.categoryId === categoryId);
     }
     
+    // 공지사항을 상단에 오도록 정렬 (isNotice DESC, createdAt DESC)
+    filteredPosts.sort((a, b) => {
+      if (a.isNotice && !b.isNotice) return -1;
+      if (!a.isNotice && b.isNotice) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
     return filteredPosts.slice(0, limit);
   }
 
@@ -398,24 +424,71 @@ export class MockStorage implements IStorage {
 
   async getCommentsByPost(postId: number): Promise<CommentWithAuthor[]> {
     console.log(`Mock: getCommentsByPost called with postId: ${postId}`);
-    return [];
+    console.log(`Mock: Current total comments in storage: ${MockStorage.mockComments.length}`);
+    console.log(`Mock: All comments:`, MockStorage.mockComments);
+    const filtered = MockStorage.mockComments.filter(comment => comment.postId === postId);
+    console.log(`Mock: Filtered comments for postId ${postId}:`, filtered);
+    return filtered;
+  }
+
+  async getComment(id: number): Promise<Comment | undefined> {
+    console.log(`Mock: getComment called with id: ${id}`);
+    return MockStorage.mockComments.find(comment => comment.id === id);
   }
 
   async createComment(comment: InsertComment): Promise<Comment> {
     console.log(`Mock: createComment called with:`, comment);
-    return {
-      id: 1,
+    console.log(`Mock: Current comments before creation:`, MockStorage.mockComments.length);
+    
+    const author = await this.getUser(comment.authorId || '');
+    console.log(`Mock: Found author:`, author);
+    
+    const newComment: CommentWithAuthor = {
+      id: MockStorage.nextCommentId++,
       content: comment.content,
       authorId: comment.authorId ?? null,
       postId: comment.postId,
       parentId: comment.parentId ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      author: author || null,
     };
+    
+    console.log(`Mock: New comment to be stored:`, newComment);
+    MockStorage.mockComments.push(newComment);
+    console.log(`Mock: Comment created and stored. Total comments: ${MockStorage.mockComments.length}`);
+    console.log(`Mock: All comments:`, MockStorage.mockComments);
+    
+    return newComment;
+  }
+
+  async updateComment(id: number, updates: Partial<InsertComment>): Promise<Comment> {
+    console.log(`Mock: updateComment called with id: ${id}, updates:`, updates);
+    
+    const commentIndex = MockStorage.mockComments.findIndex(comment => comment.id === id);
+    if (commentIndex === -1) {
+      throw new Error(`Comment with id ${id} not found`);
+    }
+    
+    const existingComment = MockStorage.mockComments[commentIndex];
+    const updatedComment: CommentWithAuthor = {
+      ...existingComment,
+      ...updates,
+      id: id,
+      updatedAt: new Date(),
+    };
+    
+    MockStorage.mockComments[commentIndex] = updatedComment;
+    return updatedComment;
   }
 
   async deleteComment(id: number): Promise<void> {
     console.log(`Mock: deleteComment called with id: ${id}`);
+    const commentIndex = MockStorage.mockComments.findIndex(comment => comment.id === id);
+    if (commentIndex !== -1) {
+      MockStorage.mockComments.splice(commentIndex, 1);
+      console.log(`Mock: Comment deleted. Total comments: ${MockStorage.mockComments.length}`);
+    }
   }
 
   // Slider image operations
@@ -460,6 +533,37 @@ export class MockStorage implements IStorage {
     if (index !== -1) {
       this.mockSliderImages.splice(index, 1);
     }
+  }
+
+  // Attachment operations
+  async getAttachmentsByPost(postId: number): Promise<Attachment[]> {
+    return []; // Mock implementation
+  }
+
+  async getAttachment(id: number): Promise<Attachment | undefined> {
+    return undefined; // Mock implementation
+  }
+
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    const newAttachment: Attachment = {
+      id: Date.now(),
+      ...attachment,
+      createdAt: new Date(),
+    };
+    return newAttachment;
+  }
+
+  async updateAttachment(id: number, updates: Partial<InsertAttachment>): Promise<Attachment> {
+    // Mock implementation
+    return { id, ...updates } as Attachment;
+  }
+
+  async deleteAttachment(id: number): Promise<void> {
+    // Mock implementation
+  }
+
+  async updateAttachmentPostId(filename: string, postId: number): Promise<void> {
+    // Mock implementation
   }
 }
 
@@ -711,10 +815,26 @@ export class DatabaseStorage implements IStorage {
       .orderBy(comments.createdAt);
   }
 
+  async getComment(id: number): Promise<Comment | undefined> {
+    if (!db) throw new Error("Database not connected");
+    const result = await db.select().from(comments).where(eq(comments.id, id));
+    return result[0];
+  }
+
   async createComment(comment: InsertComment): Promise<Comment> {
     if (!db) throw new Error("Database not connected");
     const [newComment] = await db.insert(comments).values(comment).returning();
     return newComment;
+  }
+
+  async updateComment(id: number, updates: Partial<InsertComment>): Promise<Comment> {
+    if (!db) throw new Error("Database not connected");
+    const [updatedComment] = await db
+      .update(comments)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(comments.id, id))
+      .returning();
+    return updatedComment;
   }
 
   async deleteComment(id: number): Promise<void> {
@@ -751,6 +871,40 @@ export class DatabaseStorage implements IStorage {
   async deleteSliderImage(id: number): Promise<void> {
     if (!db) throw new Error("Database not connected");
     await db.delete(sliderImages).where(eq(sliderImages.id, id));
+  }
+
+  // Attachment operations
+  async getAttachmentsByPost(postId: number): Promise<Attachment[]> {
+    if (!db) throw new Error("Database not connected");
+    return await db.select().from(attachments).where(eq(attachments.postId, postId));
+  }
+
+  async getAttachment(id: number): Promise<Attachment | undefined> {
+    if (!db) throw new Error("Database not connected");
+    const result = await db.select().from(attachments).where(eq(attachments.id, id));
+    return result[0];
+  }
+
+  async createAttachment(attachment: InsertAttachment): Promise<Attachment> {
+    if (!db) throw new Error("Database not connected");
+    const result = await db.insert(attachments).values(attachment).returning();
+    return result[0];
+  }
+
+  async updateAttachment(id: number, updates: Partial<InsertAttachment>): Promise<Attachment> {
+    if (!db) throw new Error("Database not connected");
+    const result = await db.update(attachments).set(updates).where(eq(attachments.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteAttachment(id: number): Promise<void> {
+    if (!db) throw new Error("Database not connected");
+    await db.delete(attachments).where(eq(attachments.id, id));
+  }
+
+  async updateAttachmentPostId(filename: string, postId: number): Promise<void> {
+    if (!db) throw new Error("Database not connected");
+    await db.update(attachments).set({ postId }).where(eq(attachments.filename, filename));
   }
 }
 

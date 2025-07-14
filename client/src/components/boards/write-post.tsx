@@ -1,35 +1,125 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Send } from "lucide-react";
-import type { InsertPost } from "@shared/schema";
+import { ArrowLeft, Send, Upload, Image as ImageIcon } from "lucide-react";
+import type { InsertPost, PostWithAuthor } from "@shared/schema";
+import "react-quill/dist/quill.snow.css";
+
+// React Quill을 동적으로 import
+const ReactQuill = lazy(() => import("react-quill"));
 
 interface WritePostProps {
   categoryId: number;
   categoryName: string;
+  editPost?: PostWithAuthor;
   onCancel: () => void;
   onSuccess: () => void;
 }
 
-export default function WritePost({ categoryId, categoryName, onCancel, onSuccess }: WritePostProps) {
+export default function WritePost({ categoryId, categoryName, editPost, onCancel, onSuccess }: WritePostProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isNotice, setIsNotice] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isEditing = !!editPost;
 
-  const createPostMutation = useMutation({
+  // 편집 모드일 때 기존 데이터로 초기화
+  useEffect(() => {
+    if (editPost) {
+      setTitle(editPost.title || "");
+      setContent(editPost.content || "");
+      setIsNotice(editPost.isNotice || false);
+    }
+  }, [editPost]);
+
+  // 이미지 업로드 함수
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('이미지 업로드에 실패했습니다.');
+    }
+
+    const result = await response.json();
+    return result.url;
+  };
+
+  // 이미지 붙여넣기 업로드 함수
+  const uploadImageFromClipboard = async (imageData: string): Promise<string> => {
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imageData }),
+    });
+
+    if (!response.ok) {
+      throw new Error('이미지 업로드에 실패했습니다.');
+    }
+
+    const result = await response.json();
+    return result.url;
+  };
+
+  // Quill 에디터 설정
+  const modules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      ['link', 'image'],
+      [{ 'align': [] }],
+      [{ 'color': [] }, { 'background': [] }],
+      ['clean']
+    ],
+    clipboard: {
+      // 이미지 복사 붙여넣기 처리
+      matchVisual: false,
+    },
+  };
+
+  const formats = [
+    'header', 'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet', 'indent',
+    'link', 'image', 'align', 'color', 'background'
+  ];
+
+  // 파일 선택 처리
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+  };
+
+  // 첨부파일 삭제
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const savePostMutation = useMutation({
     mutationFn: async (postData: InsertPost) => {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
+      const url = isEditing ? `/api/posts/${editPost.id}` : '/api/posts';
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -37,7 +127,7 @@ export default function WritePost({ categoryId, categoryName, onCancel, onSucces
       });
       
       if (!response.ok) {
-        throw new Error('글 작성에 실패했습니다.');
+        throw new Error(isEditing ? '글 수정에 실패했습니다.' : '글 작성에 실패했습니다.');
       }
       
       return response.json();
@@ -45,7 +135,7 @@ export default function WritePost({ categoryId, categoryName, onCancel, onSucces
     onSuccess: () => {
       toast({
         title: "성공",
-        description: "글이 성공적으로 작성되었습니다.",
+        description: isEditing ? "글이 성공적으로 수정되었습니다." : "글이 성공적으로 작성되었습니다.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
       onSuccess();
@@ -59,7 +149,7 @@ export default function WritePost({ categoryId, categoryName, onCancel, onSucces
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title.trim()) {
@@ -80,88 +170,154 @@ export default function WritePost({ categoryId, categoryName, onCancel, onSucces
       return;
     }
 
-    createPostMutation.mutate({
-      title: title.trim(),
-      content: content.trim(),
-      categoryId,
-      isNotice,
-      authorId: (user as any)?.id || null,
-    });
+    try {
+      // 첨부파일 업로드 처리 (필요시 추가)
+      
+      savePostMutation.mutate({
+        title: title.trim(),
+        content: content.trim(),
+        categoryId,
+        isNotice,
+        authorId: (user as any)?.id || null,
+      });
+    } catch (error) {
+      console.error('Save post error:', error);
+      toast({
+        title: "오류",
+        description: "글 저장 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>글쓰기 - {categoryName}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCancel}
-            className="flex items-center"
-          >
-            <ArrowLeft size={16} className="mr-2" />
-            목록으로
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">제목</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
-              className="w-full"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="content">내용</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 입력하세요"
-              className="min-h-[300px] resize-none"
-            />
-          </div>
-          
-          {user && (user as any).role === 'admin' ? (
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="isNotice"
-                checked={isNotice}
-                onCheckedChange={(checked) => setIsNotice(checked === true)}
-              />
-              <Label htmlFor="isNotice" className="text-sm">
-                공지사항으로 설정
-              </Label>
-            </div>
-          ) : null}
-          
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={createPostMutation.isPending}
-            >
-              취소
-            </Button>
-            <Button
-              type="submit"
-              disabled={createPostMutation.isPending}
-              className="flex items-center"
-            >
-              <Send size={16} className="mr-2" />
-              {createPostMutation.isPending ? '작성 중...' : '작성하기'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-6xl mx-auto">
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>{isEditing ? '글수정' : '글쓰기'} - {categoryName}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCancel}
+                  className="flex items-center"
+                >
+                  <ArrowLeft size={16} className="mr-2" />
+                  목록으로
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title">제목</Label>
+                  <Input
+                    id="title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="제목을 입력하세요"
+                    className="w-full"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="content">내용</Label>
+                  <div className="bg-white border rounded-md">
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center">에디터를 로딩 중...</div>}>
+                      <ReactQuill
+                        value={content}
+                        onChange={setContent}
+                        modules={modules}
+                        formats={formats}
+                        style={{ height: '300px' }}
+                        placeholder="내용을 입력하세요. 이미지를 복사하여 붙여넣을 수 있습니다."
+                      />
+                    </Suspense>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>첨부파일</Label>
+                  <div className="flex items-center space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      파일 선택
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                    />
+                  </div>
+                  
+                  {attachments.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {attachments.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <span className="text-sm text-gray-700">{file.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAttachment(index)}
+                          >
+                            삭제
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {user && (user as any).role === 'admin' ? (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="isNotice"
+                      checked={isNotice}
+                      onCheckedChange={(checked) => setIsNotice(checked === true)}
+                    />
+                    <Label htmlFor="isNotice" className="text-sm">
+                      공지사항으로 설정
+                    </Label>
+                  </div>
+                ) : null}
+                
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancel}
+                    disabled={savePostMutation.isPending}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={savePostMutation.isPending}
+                    className="flex items-center"
+                  >
+                    <Send size={16} className="mr-2" />
+                    {savePostMutation.isPending ? 
+                      (isEditing ? '수정 중...' : '작성 중...') : 
+                      (isEditing ? '수정하기' : '작성하기')
+                    }
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 } 

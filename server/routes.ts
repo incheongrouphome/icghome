@@ -1,6 +1,10 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import multer from "multer";
+import path from "path";
+import { promises as fs } from "fs";
 import { storage } from "./storage";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth";
 import { AuthService } from "./supabase-api";
@@ -9,6 +13,7 @@ import {
   insertCommentSchema, 
   insertBoardCategorySchema, 
   insertSliderImageSchema,
+  insertAttachmentSchema,
   loginSchema,
   signupSchema,
   type LoginData,
@@ -29,6 +34,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     },
   }));
+
+  // 파일 업로드 미들웨어 설정
+  const storage_multer = multer.diskStorage({
+    destination: async (req, file, cb) => {
+      const dir = path.join(process.cwd(), 'uploads', 'attachments');
+      try {
+        await fs.mkdir(dir, { recursive: true });
+        cb(null, dir);
+      } catch (error) {
+        cb(error as Error, dir);
+      }
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      const baseName = path.basename(file.originalname, ext);
+      cb(null, `${baseName}-${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const upload = multer({ 
+    storage: storage_multer,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB 제한
+    },
+    fileFilter: (req, file, cb) => {
+      // 허용되는 파일 형식
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain', 'text/csv'
+      ];
+      
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('허용되지 않는 파일 형식입니다.'));
+      }
+    }
+  });
+
+  // 업로드된 파일 정적 서빙
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // 파일 업로드 API
+  app.post('/api/upload', requireAuth, upload.single('file'), async (req: AuthRequest, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: '파일이 업로드되지 않았습니다.' });
+      }
+
+      const isImage = req.file.mimetype.startsWith('image/');
+      const filePath = `/uploads/attachments/${req.file.filename}`;
+
+      // 임시로 postId 없이 파일만 업로드 (나중에 게시글 저장시 연결)
+      const attachmentData = {
+        postId: null, // 임시로 null, 나중에 게시글 저장시 업데이트
+        filename: req.file.filename,
+        originalFilename: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        filePath: filePath,
+        isImage: isImage,
+      };
+
+      res.json({
+        filename: req.file.filename,
+        originalFilename: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        filePath: filePath,
+        isImage: isImage,
+        url: filePath, // 클라이언트에서 사용할 URL
+      });
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ message: '파일 업로드 중 오류가 발생했습니다.' });
+    }
+  });
+
+  // 이미지 붙여넣기 업로드 API
+  app.post('/api/upload-image', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const { imageData } = req.body;
+
+      if (!imageData || !imageData.startsWith('data:image/')) {
+        return res.status(400).json({ message: '올바른 이미지 데이터가 아닙니다.' });
+      }
+
+      // Base64 데이터 파싱
+      const matches = imageData.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ message: '올바른 이미지 형식이 아닙니다.' });
+      }
+
+      const imageType = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // 파일명 생성
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = `paste-${uniqueSuffix}.${imageType}`;
+      const filePath = `/uploads/attachments/${filename}`;
+      const absolutePath = path.join(process.cwd(), 'uploads', 'attachments', filename);
+
+      // 파일 저장
+      await fs.writeFile(absolutePath, buffer);
+
+      res.json({
+        filename: filename,
+        originalFilename: filename,
+        mimetype: `image/${imageType}`,
+        size: buffer.length,
+        filePath: filePath,
+        isImage: true,
+        url: filePath, // 클라이언트에서 사용할 URL
+      });
+    } catch (error) {
+      console.error('Image paste upload error:', error);
+      res.status(500).json({ message: '이미지 업로드 중 오류가 발생했습니다.' });
+    }
+  });
 
   // 이메일 확인 발송 API
   app.post('/api/auth/send-verification', async (req, res) => {
@@ -403,6 +532,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/posts/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const post = await storage.getPost(postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user can edit this post (author or admin)
+      if (post.authorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You can only edit your own posts" });
+      }
+
+      const postData = insertPostSchema.parse({
+        ...req.body,
+        authorId: post.authorId, // Keep original author
+      });
+
+      const updatedPost = await storage.updatePost(postId, postData);
+      res.json(updatedPost);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating post:", error);
+      res.status(500).json({ message: "Failed to update post" });
+    }
+  });
+
+  app.delete('/api/posts/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const post = await storage.getPost(postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      // Check if user can delete this post (author or admin)
+      if (post.authorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You can only delete your own posts" });
+      }
+
+      await storage.deletePost(postId);
+      res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      res.status(500).json({ message: "Failed to delete post" });
+    }
+  });
+
+  app.post('/api/posts/:id/view', async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id);
+      const post = await storage.getPost(postId);
+      
+      if (!post) {
+        return res.status(404).json({ message: "Post not found" });
+      }
+
+      await storage.incrementViewCount(postId);
+      res.json({ message: "View count incremented" });
+    } catch (error) {
+      console.error("Error incrementing view count:", error);
+      res.status(500).json({ message: "Failed to increment view count" });
+    }
+  });
+
   // Comment routes
   app.get('/api/posts/:postId/comments', async (req, res) => {
     try {
@@ -433,6 +631,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error creating comment:", error);
       res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.put('/api/comments/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const commentId = parseInt(req.params.id);
+      const comment = await storage.getComment(commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user can edit this comment (author or admin)
+      if (comment.authorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You can only edit your own comments" });
+      }
+
+      const commentData = insertCommentSchema.parse({
+        ...req.body,
+        authorId: comment.authorId, // Keep original author
+        postId: comment.postId, // Keep original post
+      });
+
+      const updatedComment = await storage.updateComment(commentId, commentData);
+      res.json(updatedComment);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating comment:", error);
+      res.status(500).json({ message: "Failed to update comment" });
+    }
+  });
+
+  app.delete('/api/comments/:id', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const commentId = parseInt(req.params.id);
+      const comment = await storage.getComment(commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check if user can delete this comment (author or admin)
+      if (comment.authorId !== req.user!.id && req.user!.role !== 'admin') {
+        return res.status(403).json({ message: "You can only delete your own comments" });
+      }
+
+      await storage.deleteComment(commentId);
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
     }
   });
 

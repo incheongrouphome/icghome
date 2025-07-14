@@ -86,6 +86,19 @@ export const sliderImages = pgTable("slider_images", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Attachments
+export const attachments = pgTable("attachments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  filename: varchar("filename").notNull(),
+  originalFilename: varchar("original_filename").notNull(),
+  mimetype: varchar("mimetype").notNull(),
+  size: integer("size").notNull(),
+  filePath: varchar("file_path").notNull(),
+  isImage: boolean("is_image").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
@@ -106,6 +119,7 @@ export const postsRelations = relations(posts, ({ one, many }) => ({
     references: [boardCategories.id],
   }),
   comments: many(comments),
+  attachments: many(attachments),
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
@@ -122,6 +136,13 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
     references: [comments.id],
   }),
   replies: many(comments),
+}));
+
+export const attachmentsRelations = relations(attachments, ({ one }) => ({
+  post: one(posts, {
+    fields: [attachments.postId],
+    references: [posts.id],
+  }),
 }));
 
 // Insert schemas
@@ -155,6 +176,11 @@ export const insertSliderImageSchema = createInsertSchema(sliderImages).omit({
   updatedAt: true,
 });
 
+export const insertAttachmentSchema = createInsertSchema(attachments).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Auth schemas
 export const loginSchema = z.object({
   email: z.string().email("올바른 이메일을 입력해주세요"),
@@ -183,6 +209,8 @@ export type Comment = typeof comments.$inferSelect;
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type SliderImage = typeof sliderImages.$inferSelect;
 export type InsertSliderImage = z.infer<typeof insertSliderImageSchema>;
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
 export type LoginData = z.infer<typeof loginSchema>;
 export type SignupData = z.infer<typeof signupSchema>;
 
@@ -191,6 +219,7 @@ export type PostWithAuthor = Post & {
   author: User | null;
   category: BoardCategory | null;
   comments?: CommentWithAuthor[];
+  attachments?: Attachment[];
 };
 
 export type CommentWithAuthor = Comment & {

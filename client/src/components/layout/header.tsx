@@ -92,7 +92,7 @@ export default function Header() {
               <div key={item.href} className="relative group">
                 {item.submenu ? (
                   <div
-                    className={`font-medium transition-colors flex items-center space-x-1 cursor-pointer ${
+                    className={`font-medium transition-colors flex items-center space-x-1 cursor-pointer min-w-[100px] ${
                       item.submenu && item.submenu.some(sub => location === sub.href)
                         ? "text-primary" 
                         : "text-dark-gray hover:text-primary"
@@ -104,13 +104,14 @@ export default function Header() {
                 ) : (
                   <Link 
                     href={item.href}
-                    className={`font-medium transition-colors flex items-center space-x-1 ${
+                    className={`font-medium transition-colors flex items-center space-x-1 min-w-[100px] ${
                       location === item.href
                         ? "text-primary" 
                         : "text-dark-gray hover:text-primary"
                     }`}
                   >
                     <span>{item.label}</span>
+                    <ChevronDown size={16} className="opacity-0" />
                   </Link>
                 )}
                 

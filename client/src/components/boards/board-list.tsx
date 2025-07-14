@@ -47,8 +47,8 @@ export default function BoardList({ categorySlug }: BoardListProps) {
         return post.title.toLowerCase().includes(searchTerm.toLowerCase());
       case "내용":
         return post.content.toLowerCase().includes(searchTerm.toLowerCase());
-      case "작성자":
-        return (post.author?.firstName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      case "소속":
+        return (post.author?.organization || '').toLowerCase().includes(searchTerm.toLowerCase());
       default:
         return post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                post.content.toLowerCase().includes(searchTerm.toLowerCase());
@@ -65,6 +65,23 @@ export default function BoardList({ categorySlug }: BoardListProps) {
      (!(category as any)?.requiresApproval || (user as any).isApproved))
   );
 
+  const getPostDetailUrl = (postId: number) => {
+    switch (categorySlug) {
+      case 'member-notices':
+        return `/members/notices/${postId}`;
+      case 'communication':
+        return `/members/communication/${postId}`;
+      case 'business-application':
+        return `/members/application/${postId}`;
+      case 'general-notices':
+        return `/announcements/general/${postId}`;
+      case 'job-postings':
+        return `/announcements/jobs/${postId}`;
+      default:
+        return '#';
+    }
+  };
+
   const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -72,7 +89,7 @@ export default function BoardList({ categorySlug }: BoardListProps) {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
-    });
+    }).replace(/\./g, '-').replace(/\s/g, '').replace(/-$/, '');
   };
 
   const getPageNumbers = () => {
@@ -119,10 +136,10 @@ export default function BoardList({ categorySlug }: BoardListProps) {
       {/* Board Table */}
       <div className="bg-white border border-gray-300">
         {/* Table Header */}
-        <div className="grid grid-cols-12 bg-gray-100 border-b border-gray-300 text-sm font-medium text-gray-700">
-          <div className="col-span-1 p-3 text-center border-r border-gray-300">번호</div>
-          <div className="col-span-6 p-3 border-r border-gray-300">제목</div>
-          <div className="col-span-2 p-3 text-center border-r border-gray-300">이름</div>
+        <div className="grid grid-cols-18 bg-gray-100 border-b border-gray-300 text-sm font-medium text-gray-700">
+          <div className="col-span-2 p-3 text-center border-r border-gray-300">번호</div>
+          <div className="col-span-9 p-3 border-r border-gray-300">제목</div>
+          <div className="col-span-4 p-3 text-center border-r border-gray-300">소속</div>
           <div className="col-span-2 p-3 text-center border-r border-gray-300">등록일</div>
           <div className="col-span-1 p-3 text-center">조회</div>
         </div>
@@ -136,13 +153,20 @@ export default function BoardList({ categorySlug }: BoardListProps) {
           currentPosts.map((post: PostWithAuthor, index) => {
             const postNumber = filteredPosts.length - (startIndex + index);
             return (
-              <div key={post.id} className="grid grid-cols-12 border-b border-gray-200 hover:bg-gray-50 transition-colors text-sm">
-                <div className="col-span-1 p-3 text-center border-r border-gray-200 text-gray-600">
-                  {postNumber}
+              <div key={post.id} className="grid grid-cols-18 border-b border-gray-200 hover:bg-gray-50 transition-colors text-sm">
+                <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
+                  {post.isNotice ? (
+                    <span className="text-red-600 font-medium">공지</span>
+                  ) : (
+                    postNumber
+                  )}
                 </div>
-                <div className="col-span-6 p-3 border-r border-gray-200">
+                <div className="col-span-9 p-3 border-r border-gray-200">
                   <div className="flex items-center space-x-2">
-                    <a href={`#`} className="text-gray-800 hover:text-blue-600 hover:underline font-medium truncate">
+                    <a 
+                      href={getPostDetailUrl(post.id)} 
+                      className="text-gray-800 hover:text-blue-600 hover:underline font-medium truncate"
+                    >
                       {post.title}
                     </a>
                     {post.content && post.content.length > 100 && (
@@ -150,8 +174,8 @@ export default function BoardList({ categorySlug }: BoardListProps) {
                     )}
                   </div>
                 </div>
-                <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
-                  {post.author?.firstName || '익명'}
+                <div className="col-span-4 p-3 text-center border-r border-gray-200 text-gray-600">
+                  {post.author?.organization || '미등록'}
                 </div>
                 <div className="col-span-2 p-3 text-center border-r border-gray-200 text-gray-600">
                   {formatDate(post.createdAt)}
@@ -245,7 +269,7 @@ export default function BoardList({ categorySlug }: BoardListProps) {
             <SelectContent>
               <SelectItem value="제목">제목</SelectItem>
               <SelectItem value="내용">내용</SelectItem>
-              <SelectItem value="작성자">작성자</SelectItem>
+              <SelectItem value="소속">소속</SelectItem>
             </SelectContent>
           </Select>
           <Input

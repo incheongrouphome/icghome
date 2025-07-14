@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Eye, MessageSquare, Pin } from "lucide-react";
+import { Eye, MessageSquare } from "lucide-react";
 import type { PostWithAuthor } from "@shared/schema";
 
 interface PostItemProps {
@@ -19,8 +18,8 @@ export default function PostItem({ post }: PostItemProps) {
 
   const getAuthorName = () => {
     if (!post.author) return "익명";
-    if (post.author.firstName && post.author.lastName) {
-      return `${post.author.firstName} ${post.author.lastName}`;
+    if (post.author.name) {
+      return post.author.name;
     }
     return post.author.email?.split('@')[0] || "작성자";
   };
@@ -31,15 +30,9 @@ export default function PostItem({ post }: PostItemProps) {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              {post.isNotice && (
-                <Pin className="text-red-500" size={16} />
-              )}
               <h3 className="font-medium text-dark-gray hover:text-primary transition-colors">
                 {post.title}
               </h3>
-              {post.isNotice && (
-                <Badge variant="destructive" className="text-xs">공지</Badge>
-              )}
             </div>
             
             <p className="text-sm text-medium-gray line-clamp-2 mb-3">
