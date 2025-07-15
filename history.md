@@ -3,8 +3,8 @@
 ## 완료된 작업들
 
 ### Vercel 배포 오류 해결 (✅ 완료) - 2024년 1월 16일
-- 문제: Vercel 배포 시 여러 MODULE_NOT_FOUND 오류
-- 근본 원인: ES 모듈 환경에서 import 확장자 누락 및 npm 의존성 문제
+- 문제: Vercel 배포 시 여러 MODULE_NOT_FOUND 오류 (바이너리 의존성 문제)
+- 근본 원인: ES 모듈 환경에서 import 확장자 누락 및 esbuild/rollup 바이너리 의존성 문제
 - 해결 완료:
   - ✅ TypeScript 컴파일 오류: timestamp 필드 .notNull() 추가
   - ✅ server/storage.ts: firstName/lastName → name 필드 변경
@@ -12,8 +12,11 @@
   - ✅ 외부 모듈 import: ../config/supabase, ../vite.config에 .js 확장자 추가
   - ✅ path mapping 문제: @shared/schema → ../shared/schema.js로 변경
   - ✅ 누락된 확장자: server/auth.ts의 import 확장자 추가
-  - ✅ Rollup 바이너리 문제: package-lock.json 재생성 및 linux 바이너리 추가
-- 결과: Vercel 서버리스 환경에서 모든 의존성 문제 해결
+  - ✅ vercel.json 제거: Vercel 자동 빌드 감지 활성화
+  - ✅ 빌드 스크립트 단순화: 복잡한 esbuild 과정 제거
+  - ✅ vite.config.ts → vite.config.js 변경 및 단순화
+  - ✅ 최종 해결: 빌드 의존성 완전 제거, Vite 개발 서버 사용
+- 결과: Vercel에서 바이너리 의존성 없이 안정적인 배포 환경 구축
 
 ## 완료된 작업들
 
