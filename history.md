@@ -406,33 +406,6 @@
 - 서버 API 코드 수정 (multer → Supabase Storage API)
 - 클라이언트 업로드 로직 업데이트
 
-### Supabase Storage 마이그레이션 완료 (2025-01-16)
-**작업 완료:**
-- ✅ **서버 코드 수정**: multer 로컬 디스크 저장 → Supabase Storage API 사용
-- ✅ **파일 업로드 API 변경**: 
-  - `/api/upload`: 게시판 첨부파일 업로드 → Supabase Storage 'attachments' 버킷 사용
-  - `/api/upload-image`: 이미지 붙여넣기 업로드 → Supabase Storage 'attachments' 버킷 사용
-  - `/api/admin/slider-images/upload`: 관리자 슬라이더 이미지 업로드 → Supabase Storage 'slider-images' 버킷 사용
-- ✅ **메모리 저장 방식 변경**: multer.diskStorage → multer.memoryStorage
-- ✅ **Supabase Storage 헬퍼 함수 추가**:
-  - `uploadToSupabaseStorage`: 일반 파일 업로드 함수
-  - `uploadBase64ToSupabaseStorage`: Base64 이미지 업로드 함수
-- ✅ **클라이언트 코드 수정**: 파일 다운로드 시 Supabase Storage 공개 URL 사용
-- ✅ **빌드 및 서버 시작 테스트**: 정상 작동 확인
-
-**사용자 작업 필요:**
-1. Supabase 대시보드에서 Storage 버킷 생성:
-   - `attachments` 버킷 (게시판 첨부파일용)
-   - `slider-images` 버킷 (관리자 슬라이더 이미지용)
-2. 버킷 정책 설정:
-   - 모든 사용자 읽기 권한
-   - 인증된 사용자 업로드 권한
-   - 본인 파일만 삭제 권한
-3. 환경 변수 확인:
-   - `VITE_SUPABASE_URL`: Supabase 프로젝트 URL
-   - `VITE_SUPABASE_ANON_KEY`: Supabase 익명 키
-   - `SUPABASE_SERVICE_ROLE_KEY`: Supabase 서비스 역할 키
-
 ### 17. ID/PW 찾기 기능 구현 (✅ 완료)
 **서버 API 추가:**
 - ID 찾기: 이름 + 조직명으로 이메일(ID) 찾기 (이메일 마스킹 처리)
@@ -557,3 +530,33 @@
 4. **적용 완료**
    - `server/db.ts`에 trim() 로직 추가하여 공백 제거.
    - Vercel 환경 변수에 올바른 pooler 연결 문자열 적용 필요.
+
+## 2025-07-15 슬라이더 이미지 업로드 오류 해결 (✅ 완료)
+
+1. **문제 진단**
+   - 에러 1: `"Invalid key: slider/1752554446841-761687946-ë‹¤ìš´ë¡œë"œ (1).png"` → 한글 파일명 인코딩 문제
+   - 에러 2: `"new row violates row-level security policy"` → Supabase Storage RLS 정책 위반
+
+2. **해결 완료**
+   - ✅ **파일명 인코딩 문제 해결**: 
+     - `sanitizeFilename()` 함수 추가로 한글/특수문자 제거
+     - 안전한 ASCII 파일명 생성 (영문, 숫자, 밑줄, 하이픈만 허용)
+     - 공백을 밑줄로 변환, 최대 50자 제한
+   - ✅ **Supabase Storage 권한 문제 해결**:
+     - `supabase` 클라이언트 → `supabaseAdmin` 클라이언트로 변경
+     - Service Role Key 사용으로 RLS 정책 우회
+     - 파일 업로드 및 공개 URL 생성 모두 admin 클라이언트 사용
+
+3. **수정 파일**
+   - `server/routes.ts`: 파일명 정리 함수 추가, admin 클라이언트 사용
+   - `uploadToSupabaseStorage()` 함수: 안전한 파일명 생성 및 admin 권한 사용
+   - `uploadBase64ToSupabaseStorage()` 함수: 동일한 권한 수정 적용
+
+4. **주의사항**
+   - Supabase Storage 버킷(`slider-images`, `attachments`) 생성 필요
+   - 환경 변수 `SUPABASE_SERVICE_ROLE_KEY` 설정 필요
+
+5. **환경 변수 설정 업데이트**
+   - `config/supabase.ts`: `VITE_` 접두사 제거
+   - 환경 변수 우선순위: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - 기본값 제거하여 환경 변수 필수 설정 강제

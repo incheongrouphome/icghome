@@ -11,7 +11,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage.js";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth.js";
 import { AuthService } from "./supabase-api.js";
-import { supabase } from "../config/supabase.js";
+import { supabase, supabaseAdmin } from "../config/supabase.js";
 import { 
   insertPostSchema, 
   insertCommentSchema, 
@@ -25,11 +25,36 @@ import {
 } from "../shared/schema.js";
 import { z } from "zod";
 
+// 파일명을 안전하게 정리하는 함수
+function sanitizeFilename(filename: string): string {
+  // 파일 확장자 분리
+  const lastDotIndex = filename.lastIndexOf('.');
+  const name = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+  const ext = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+  
+  // 한글, 공백, 특수문자 제거하고 영문/숫자만 남김
+  const cleanName = name
+    .replace(/[^a-zA-Z0-9._-]/g, '') // 영문, 숫자, 점, 밑줄, 하이픈만 허용
+    .replace(/\s+/g, '_') // 공백을 밑줄로 변경
+    .replace(/[._-]+/g, '_') // 연속된 특수문자를 하나의 밑줄로 변경
+    .replace(/^[._-]+|[._-]+$/g, '') // 시작/끝의 특수문자 제거
+    .substring(0, 50); // 최대 50자로 제한
+  
+  // 이름이 비어있으면 기본 이름 사용
+  const finalName = cleanName || 'file';
+  
+  return finalName + ext.toLowerCase();
+}
+
 // Supabase Storage 업로드 함수
 async function uploadToSupabaseStorage(file: Express.Multer.File, bucket: string, folder: string = '') {
-  const fileName = `${folder}${Date.now()}-${Math.round(Math.random() * 1E9)}-${file.originalname}`;
+  // 안전한 파일명 생성
+  const sanitizedName = sanitizeFilename(file.originalname);
+  const fileName = `${folder}${Date.now()}-${Math.round(Math.random() * 1E9)}-${sanitizedName}`;
   
-  const { data, error } = await supabase.storage
+  console.log('📁 파일명 변환:', file.originalname, '→', fileName);
+  
+  const { data, error } = await supabaseAdmin.storage
     .from(bucket)
     .upload(fileName, file.buffer, {
       contentType: file.mimetype,
@@ -43,7 +68,7 @@ async function uploadToSupabaseStorage(file: Express.Multer.File, bucket: string
   }
 
   // 공개 URL 생성
-  const { data: publicUrlData } = supabase.storage
+  const { data: publicUrlData } = supabaseAdmin.storage
     .from(bucket)
     .getPublicUrl(fileName);
 
@@ -65,7 +90,7 @@ async function uploadBase64ToSupabaseStorage(base64Data: string, bucket: string,
   const buffer = Buffer.from(matches[2], 'base64');
   const fileName = `${folder}paste-${Date.now()}-${Math.round(Math.random() * 1E9)}.${imageType}`;
   
-  const { data, error } = await supabase.storage
+  const { data, error } = await supabaseAdmin.storage
     .from(bucket)
     .upload(fileName, buffer, {
       contentType: `image/${imageType}`,
@@ -79,7 +104,7 @@ async function uploadBase64ToSupabaseStorage(base64Data: string, bucket: string,
   }
 
   // 공개 URL 생성
-  const { data: publicUrlData } = supabase.storage
+  const { data: publicUrlData } = supabaseAdmin.storage
     .from(bucket)
     .getPublicUrl(fileName);
 

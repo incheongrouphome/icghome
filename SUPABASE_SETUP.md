@@ -1,168 +1,252 @@
-# Supabase 로컬 개발 환경 설정 가이드
+# Supabase 프로덕션 환경 설정 가이드
 
-## 📋 필수 요구사항
+## 📋 필수 사항
 
-### 1. Docker 설치
-로컬 Supabase 개발 환경을 위해 Docker가 필요합니다.
+### 1. Supabase 프로젝트 생성
+- [Supabase Dashboard](https://supabase.com/dashboard) 접속
+- 새 프로젝트 생성
+- 프로젝트 이름: `AIBridge GroupHome Incheon`
+- 지역: `Northeast Asia (ap-northeast-1)`
 
-- **Windows**: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop) 설치
-- **macOS**: [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop) 설치
-- **Linux**: [Docker Engine](https://docs.docker.com/engine/install/) 설치
-
-### 2. 설치 확인
-```bash
-docker --version
-docker-compose --version
-```
-
-## 🚀 설정 및 실행 방법
-
-### 1. 환경 변수 설정
+### 2. 환경 변수 설정
 프로젝트 루트에 `.env` 파일을 생성하고 다음 내용을 추가하세요:
 
 ```env
-# Supabase 로컬 개발 환경
-VITE_SUPABASE_URL=http://localhost:54321
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+# Supabase 프로덕션 환경
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# 데이터베이스 설정
-DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
+# 데이터베이스 설정 (Transaction mode 권장)
+DATABASE_URL=postgresql://postgres:your-password@db.your-project-id.supabase.co:5432/postgres
 
 # 세션 비밀키
 SESSION_SECRET=your-super-secret-session-key-here
 
-# 개발 모드
-NODE_ENV=development
+# 프로덕션 모드
+NODE_ENV=production
 ```
 
-### 2. Supabase 로컬 환경 시작
-```bash
-# Supabase 컨테이너 시작 (백그라운드 실행)
-npm run supabase:start
+### 3. 프로덕션 환경 접속 정보
+- **프로덕션 웹사이트**: https://your-site.vercel.app
+- **Supabase 대시보드**: https://supabase.com/dashboard/project/your-project-id
+- **데이터베이스 (Direct connection)**: Port 5432 (IPv6 전용)
+- **데이터베이스 (Connection pooling)**: Port 6543 (IPv4/IPv6 모두 지원)
 
-# 로그 확인
-npm run supabase:logs
+## 🚀 설정 및 배포 방법
+
+### 1. 데이터베이스 스키마 생성
+Supabase 대시보드 → SQL Editor에서 다음 스크립트 실행:
+
+```sql
+-- 사용자 테이블 생성
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR PRIMARY KEY,
+  email VARCHAR UNIQUE NOT NULL,
+  password VARCHAR NOT NULL,
+  name VARCHAR NOT NULL,
+  profile_image_url VARCHAR,
+  role VARCHAR DEFAULT 'visitor' NOT NULL,
+  is_approved BOOLEAN DEFAULT false NOT NULL,
+  organization VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 게시판 카테고리 테이블 생성
+CREATE TABLE IF NOT EXISTS board_categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR NOT NULL,
+  slug VARCHAR UNIQUE NOT NULL,
+  description TEXT,
+  requires_auth BOOLEAN DEFAULT false NOT NULL,
+  requires_approval BOOLEAN DEFAULT false NOT NULL,
+  allowed_roles TEXT[],
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 게시글 테이블 생성
+CREATE TABLE IF NOT EXISTS posts (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  content TEXT NOT NULL,
+  author_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  category_id INTEGER REFERENCES board_categories(id) ON DELETE SET NULL,
+  is_notice BOOLEAN DEFAULT false NOT NULL,
+  view_count INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 댓글 테이블 생성
+CREATE TABLE IF NOT EXISTS comments (
+  id SERIAL PRIMARY KEY,
+  content TEXT NOT NULL,
+  author_id VARCHAR REFERENCES users(id) ON DELETE SET NULL,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 슬라이더 이미지 테이블 생성
+CREATE TABLE IF NOT EXISTS slider_images (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  image_url VARCHAR NOT NULL,
+  alt_text VARCHAR,
+  is_active BOOLEAN DEFAULT true NOT NULL,
+  "order" INTEGER DEFAULT 0 NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 첨부파일 테이블 생성
+CREATE TABLE IF NOT EXISTS attachments (
+  id SERIAL PRIMARY KEY,
+  post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+  filename VARCHAR NOT NULL,
+  original_filename VARCHAR NOT NULL,
+  mimetype VARCHAR NOT NULL,
+  size INTEGER NOT NULL,
+  file_path VARCHAR NOT NULL,
+  is_image BOOLEAN DEFAULT false NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
-### 3. 개발 서버 시작
-```bash
-# 메인 애플리케이션 실행
-npm run dev
+### 2. Storage 버킷 생성
+Supabase 대시보드 → Storage에서 버킷 생성:
+
+```sql
+-- 첨부파일 버킷 생성
+INSERT INTO storage.buckets (id, name, public) VALUES ('attachments', 'attachments', true);
+
+-- 슬라이더 이미지 버킷 생성
+INSERT INTO storage.buckets (id, name, public) VALUES ('slider-images', 'slider-images', true);
 ```
 
-### 4. 서비스 접근 주소
-- **메인 애플리케이션**: http://localhost:5173
-- **API 게이트웨이**: http://localhost:8000
-- **데이터베이스**: localhost:54322
-- **Auth 서비스**: http://localhost:9999
-- **Storage 서비스**: http://localhost:5000
-- **이메일 테스트**: http://localhost:54324
+### 3. Storage 정책 설정
+SQL Editor에서 다음 정책 생성:
 
-## 🗄️ 데이터베이스 구조
+```sql
+-- 첨부파일 버킷 정책
+CREATE POLICY "Public read access" ON storage.objects 
+FOR SELECT USING (bucket_id = 'attachments');
 
-### 테이블 구조
-- **users**: 사용자 정보
-- **board_categories**: 게시판 카테고리
-- **posts**: 게시글
-- **comments**: 댓글
-- **slider_images**: 메인 슬라이더 이미지
+CREATE POLICY "Authenticated users can upload to attachments" ON storage.objects 
+FOR INSERT WITH CHECK (bucket_id = 'attachments' AND auth.role() = 'authenticated');
 
-### 기본 데이터
-초기 실행 시 다음 데이터가 자동으로 생성됩니다:
-- 관리자 계정: `admin@example.com` / `password123`
-- 일반 사용자: `user@example.com` / `password123`
-- 방문자: `visitor@example.com` / `password123`
+CREATE POLICY "Users can delete own files in attachments" ON storage.objects 
+FOR DELETE USING (bucket_id = 'attachments' AND auth.uid() = owner);
+
+-- 슬라이더 이미지 버킷 정책
+CREATE POLICY "Public read access for slider images" ON storage.objects 
+FOR SELECT USING (bucket_id = 'slider-images');
+
+CREATE POLICY "Authenticated users can upload to slider-images" ON storage.objects 
+FOR INSERT WITH CHECK (bucket_id = 'slider-images' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Users can delete own files in slider-images" ON storage.objects 
+FOR DELETE USING (bucket_id = 'slider-images' AND auth.uid() = owner);
+```
+
+### 4. 초기 데이터 생성
+SQL Editor에서 기본 카테고리 생성:
+
+```sql
+-- 게시판 카테고리 초기 데이터
+INSERT INTO board_categories (name, slug, description, requires_auth, requires_approval, allowed_roles) VALUES
+('회원 공지사항', 'member-notices', '회원을 위한 중요 공지사항', true, false, ARRAY['admin', 'member']),
+('소통공간', 'communication', '회원 간 자유로운 소통 공간', true, true, ARRAY['admin', 'member']),
+('사업신청', 'business-application', '각종 사업 신청 및 관련 공지', true, true, ARRAY['admin', 'member']),
+('일반 공지사항', 'general-notices', '일반인을 위한 공지사항', false, false, ARRAY['admin']),
+('채용공고', 'job-postings', '채용 관련 공고', false, false, ARRAY['admin']);
+
+-- 관리자 계정 생성 (비밀번호는 bcrypt로 해시된 값)
+INSERT INTO users (id, email, password, name, role, is_approved, organization) VALUES
+('admin_001', 'admin@example.com', '$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq', '관리자', 'admin', true, '한국아동청소년그룹홈협의회 인천지부');
+```
+
+### 5. Vercel 배포 설정
+Vercel 대시보드에서 환경 변수 설정:
+
+```
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=postgresql://postgres:password@db.your-project-id.supabase.co:6543/postgres
+SESSION_SECRET=your-super-secret-session-key-here
+NODE_ENV=production
+```
 
 ## 🔧 유용한 명령어
 
-### Supabase 관리
+### 개발 관련
 ```bash
-# 컨테이너 시작
-npm run supabase:start
-
-# 컨테이너 중지
-npm run supabase:stop
-
-# 데이터 초기화 (모든 데이터 삭제)
-npm run supabase:reset
-
-# 로그 확인
-npm run supabase:logs
-```
-
-### 개발 도구
-```bash
-# 타입 체크
-npm run check
+# 개발 서버 시작
+npm run dev
 
 # 프로덕션 빌드
 npm run build
 
-# 프로덕션 실행
+# 프로덕션 서버 시작
 npm run start
+
+# 타입 체크
+npm run check
+
+# 데이터베이스 스키마 푸시
+npm run db:push
 ```
 
 ## 🛠️ 트러블슈팅
 
-### 1. Docker 컨테이너 실행 실패
+### 1. 데이터베이스 연결 오류
 ```bash
-# 기존 컨테이너 정리
-docker-compose down -v
-docker system prune -a
+# 연결 문자열 확인
+echo $DATABASE_URL
 
-# 다시 시작
-npm run supabase:start
+# IPv6 연결 문제 시 포트 6543 사용 (Transaction mode)
+DATABASE_URL=postgresql://postgres:password@db.project-id.supabase.co:6543/postgres
 ```
 
-### 2. 포트 충돌 문제
-기본 포트가 이미 사용 중인 경우 `docker-compose.yml` 파일의 포트 번호를 변경하세요.
-
-### 3. 데이터베이스 연결 오류
+### 2. 환경 변수 문제
 ```bash
-# 데이터베이스 컨테이너 로그 확인
-docker-compose logs db
-
-# 데이터베이스 재시작
-docker-compose restart db
+# 환경 변수 확인
+printenv | grep -E "(SUPABASE|DATABASE)"
 ```
 
-### 4. 이미지 로딩 문제
-```bash
-# 최신 이미지 다운로드
-docker-compose pull
-
-# 컨테이너 재시작
-npm run supabase:reset
-```
+### 3. 파일 업로드 오류
+- Storage 버킷이 생성되었는지 확인
+- 버킷 정책이 올바르게 설정되었는지 확인
+- 환경 변수가 올바르게 설정되었는지 확인
 
 ## 🔐 보안 설정
 
-### 개발 환경 전용 키
-현재 설정의 JWT 키들은 **개발 환경 전용**입니다. 
-프로덕션 환경에서는 반드시 새로운 키를 생성해야 합니다.
-
-### 프로덕션 배포 시 주의사항
-1. `.env` 파일을 프로덕션 서버의 환경 변수로 설정
-2. JWT 시크릿 키를 새로 생성
-3. 데이터베이스 URL을 프로덕션 DB로 변경
-4. 도메인 설정 업데이트
+### 프로덕션 환경 체크리스트
+- [x] 환경 변수를 .env 파일이 아닌 배포 플랫폼에 설정
+- [x] SESSION_SECRET을 강력한 랜덤 문자열로 설정
+- [x] 데이터베이스 비밀번호를 복잡하게 설정
+- [x] CORS 설정 확인
+- [x] Rate Limiting 적용
+- [x] 파일 업로드 크기 제한 설정
 
 ## 📚 추가 리소스
 
 - [Supabase 공식 문서](https://supabase.com/docs)
-- [Docker 공식 문서](https://docs.docker.com/)
+- [Vercel 배포 가이드](https://vercel.com/docs)
 - [PostgreSQL 문서](https://www.postgresql.org/docs/)
 
-## 🆘 도움이 필요한 경우
+## 🆘 문제 해결
 
 문제가 발생하면 다음 정보와 함께 문의하세요:
-1. 운영체제 및 버전
-2. Docker 버전
+1. 운영체제 및 Node.js 버전
+2. 배포 플랫폼 (Vercel, Netlify 등)
 3. 에러 메시지
-4. 실행한 명령어
-5. 로그 내용 (`npm run supabase:logs`)
+4. 환경 변수 설정 상태
+5. 브라우저 개발자 도구 콘솔 로그
 
 ---
 
-**중요**: 이 설정은 로컬 개발 환경을 위한 것입니다. 프로덕션 환경에서는 적절한 보안 설정이 필요합니다. 
+**중요**: 이 설정은 프로덕션 환경을 위한 것입니다. 보안과 성능을 위해 모든 환경 변수를 적절히 설정해주세요. 
