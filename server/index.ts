@@ -40,8 +40,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
-
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -50,20 +48,23 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  
-  // Always use Vite dev server to avoid build dependencies
-  await setupVite(app, server);
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  const host = process.env.NODE_ENV === 'development' ? 'localhost' : '0.0.0.0';
-  
-  server.listen(port, host, () => {
-    log(`serving on http://${host}:${port}`);
-  });
+  if (process.env.NODE_ENV === 'development') {
+    // Development: Use Vite middleware
+    const { setupVite, log } = await import("./vite.js");
+    const http = await import('http');
+    const server = http.createServer(app);
+    await registerRoutes(app); // API routes
+    await setupVite(app, server); // Vite dev server
+    
+    const port = 5000;
+    const host = 'localhost';
+    server.listen(port, host, () => {
+      log(`serving on http://${host}:${port}`);
+    });
+  } else {
+    // Production: Register API routes for Vercel
+    await registerRoutes(app);
+  }
 })();
+
+export default app;

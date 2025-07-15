@@ -25,7 +25,7 @@ import {
 } from "../shared/schema.js";
 import { z } from "zod";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express) {
   // 보안 헤더 설정
   app.use(helmet({
     contentSecurityPolicy: {
@@ -1174,7 +1174,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete slider image" });
     }
   });
-
-  const httpServer = createServer(app);
-  return httpServer;
 }
