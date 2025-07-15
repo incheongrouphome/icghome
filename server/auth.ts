@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { Request, Response, NextFunction } from 'express';
-import { storage } from './storage';
-import { PublicUser } from '@shared/schema';
+import { storage } from './storage.js';
+import { PublicUser } from '../shared/schema.js';
 
 declare global {
   namespace Express {
