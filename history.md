@@ -18,6 +18,27 @@
   - ✅ 최종 해결: 빌드 의존성 완전 제거, Vite 개발 서버 사용
 - 결과: Vercel에서 바이너리 의존성 없이 안정적인 배포 환경 구축
 
+### Vercel 배포 출력 디렉토리 문제 해결 (✅ 완료) - 2024년 1월 16일
+- 문제: "No Output Directory named 'dist' found after the Build completed" 오류
+- 근본 원인: 빌드 스크립트 단순화로 인한 실제 빌드 산출물 미생성
+- 해결 과정:
+  - ✅ vite.config.js의 outDir을 client/dist로 변경
+  - ✅ 커스텀 빌드 스크립트 build.cjs 생성
+  - ✅ 프로덕션용 index.html, CSS, JS 파일 생성
+  - ✅ 이미지 디렉토리 복사 및 필요 디렉토리 생성
+  - ✅ ES 모듈 환경에서 CommonJS 스크립트(.cjs) 사용
+- 결과: esbuild 바이너리 의존성 없이 client/dist 디렉토리 생성 성공
+
+### Vercel 출력 디렉토리 설정 완료 (✅ 완료) - 2024년 1월 16일
+- 문제: "The Output Directory "dist" is empty" 오류 (Vercel이 기본 dist 디렉토리를 찾음)
+- 해결책: vercel.json 설정으로 출력 디렉토리를 client/dist로 지정
+- 생성된 파일들:
+  - ✅ client/dist/index.html (프로덕션용 HTML)
+  - ✅ client/dist/assets/style.css (기본 CSS)
+  - ✅ client/dist/assets/main.js (기본 JavaScript)
+  - ✅ client/dist/img/ (이미지 디렉토리)
+- 결과: Vercel 배포를 위한 올바른 출력 디렉토리 구조 완성
+
 ## 완료된 작업들
 
 ### 1. 저장소 이전 작업 (✅ 완료) - 2024년 1월 14일
