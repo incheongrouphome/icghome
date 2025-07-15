@@ -133,8 +133,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 업로드된 파일 정적 서빙
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   
-  // 슬라이더 이미지 정적 서빙
-  app.use('/img', express.static(path.join(process.cwd(), 'client', 'src', 'img')));
+  // 슬라이더 이미지 등 public 에셋 정적 서빙
+  app.use(express.static(path.join(process.cwd(), 'client', 'public')));
 
   // 파일 업로드 API
   app.post('/api/upload', requireAuth, upload.single('file'), async (req: AuthRequest, res) => {
