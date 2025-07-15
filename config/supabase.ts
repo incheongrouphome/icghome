@@ -1,11 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-// 환경 변수 (로컬 개발 시 설정)
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:54321'
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'http://localhost:54321';
+const supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || 'your-service-role-key';
+
+// 환경 변수 검증
+if (!supabaseUrl || !supabaseKey || !supabaseServiceKey) {
+  console.error('Supabase configuration missing. Please set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and SUPABASE_SERVICE_KEY in your environment variables.');
+  process.exit(1);
+}
 
 // Supabase 클라이언트 생성
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
