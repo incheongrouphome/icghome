@@ -21,7 +21,7 @@ import {
   type CommentWithAuthor,
   type PublicUser,
   type SignupData,
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
 import { generateUserId, hashPassword } from "./auth.js";
