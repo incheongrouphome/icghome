@@ -386,149 +386,52 @@
 - 📋 **배포 전 체크리스트 생성**: DEPLOYMENT_CHECKLIST.md 파일 생성
 - 🚀 **배포 준비 완료**: 환경 변수 설정 후 즉시 배포 가능
 - 📧 **실제 Supabase Auth 이메일 확인 기능 구현**: Mock 시스템에서 실제 이메일 발송으로 업그레이드
+- ⚠️ **파일 업로드 시스템 검토 필요**: 현재 로컬 파일 시스템 사용으로 배포 환경에서 문제 발생 가능
 
-### 17. 보안 강화 조치 (✅ 완료)
-- **문제 확인**: 민감한 정보 로그 출력, 보안 헤더 부족, Rate Limiting 없음
-- **해결 완료**:
-  - **민감한 정보 로그 제거**: 비밀번호, 해시, 토큰 등 콘솔 출력 완전 제거
-  - **개발 환경 평문 비밀번호 허용 제거**: 하드코딩된 비밀번호 로직 제거
-  - **이메일 토큰 로그 제거**: 인증 토큰 콘솔 출력 제거
-  - **CORS 설정 추가**: 프로덕션/개발 환경별 적절한 CORS 정책 적용
-  - **보안 헤더 추가**: Helmet 미들웨어로 CSP, XSS 방지 등 보안 헤더 적용
-  - **Rate Limiting 추가**: 로그인/회원가입 API 무차별 공격 방지 (15분 5회 제한)
-  - **세션 보안 강화**: 프로덕션 환경에서 SESSION_SECRET 필수 검증
-  - **일반 API Rate Limiting**: 전체 API 과도한 요청 방지 (15분 100회 제한)
+### 파일 업로드 시스템 현황 (2025-01-16)
+**현재 구현 상태:**
+- 게시판 첨부파일: `uploads/attachments/` 로컬 폴더에 저장
+- 관리자 이미지: `client/src/img/slider/` 로컬 폴더에 저장
+- multer 라이브러리 사용하여 로컬 디스크 저장
+- 첨부파일 메타데이터는 `attachments` 테이블에 저장
 
-## 배포 전 주요 확인사항
-1. **환경 변수 설정**: DATABASE_URL, NODE_ENV, SESSION_SECRET
-2. **포트 5000 충돌 해결**: 기존 프로세스 종료 또는 다른 포트 사용
-3. **데이터베이스 설정**: 프로덕션 DB 연결 및 초기 데이터 생성
-4. **파일 권한 설정**: uploads 디렉토리 생성 및 권한 설정
+**배포 환경 문제점:**
+- Vercel/Netlify: 읽기 전용 파일 시스템으로 업로드 불가
+- 서버리스 환경: 재시작 시 임시 파일 삭제
+- 확장성 문제: 다중 서버 환경에서 파일 공유 불가
 
-## 프로젝트 구조 분석 (2024-01-08)
-### 현재 아키텍처
-- **프론트엔드**: React + Vite (client 폴더)
-- **백엔드**: Express.js 서버 (server 폴더)
-- **데이터베이스**: 로컬 Supabase (Docker Compose)
-- **파일 저장**: 로컬 파일 시스템 (uploads 폴더)
-- **포트**: 5000 (프론트엔드 + 백엔드 통합 서빙)
+**해결 방안:**
+- Supabase Storage 마이그레이션 필요
+- 버킷 생성 및 정책 설정
+- 서버 API 코드 수정 (multer → Supabase Storage API)
+- 클라이언트 업로드 로직 업데이트
 
-### Netlify 배포 분석 결과
-**❌ 직접 배포 불가능 이유:**
-1. **서버 의존성**: Express.js 백엔드가 포트 5000에서 실행
-2. **파일 시스템**: 업로드된 파일이 로컬 uploads 폴더에 저장
-3. **세션 관리**: 메모리 기반 세션 스토어 사용
-4. **로컬 Supabase**: Docker 컨테이너 기반 로컬 DB 환경
+### Supabase Storage 마이그레이션 완료 (2025-01-16)
+**작업 완료:**
+- ✅ **서버 코드 수정**: multer 로컬 디스크 저장 → Supabase Storage API 사용
+- ✅ **파일 업로드 API 변경**: 
+  - `/api/upload`: 게시판 첨부파일 업로드 → Supabase Storage 'attachments' 버킷 사용
+  - `/api/upload-image`: 이미지 붙여넣기 업로드 → Supabase Storage 'attachments' 버킷 사용
+  - `/api/admin/slider-images/upload`: 관리자 슬라이더 이미지 업로드 → Supabase Storage 'slider-images' 버킷 사용
+- ✅ **메모리 저장 방식 변경**: multer.diskStorage → multer.memoryStorage
+- ✅ **Supabase Storage 헬퍼 함수 추가**:
+  - `uploadToSupabaseStorage`: 일반 파일 업로드 함수
+  - `uploadBase64ToSupabaseStorage`: Base64 이미지 업로드 함수
+- ✅ **클라이언트 코드 수정**: 파일 다운로드 시 Supabase Storage 공개 URL 사용
+- ✅ **빌드 및 서버 시작 테스트**: 정상 작동 확인
 
-**✅ 배포 가능 솔루션:**
-1. **프로덕션 Supabase + 백엔드 분리 배포**
-   - 백엔드: Vercel/Railway/Render 등에 배포
-   - 프론트엔드: Netlify에 배포
-   - DB: 프로덕션 Supabase 사용
-
-2. **Netlify Functions 전환** (복잡함)
-   - Express 라우트를 Netlify Functions로 변경
-   - 파일 업로드를 Supabase Storage로 변경
-   - 세션을 JWT 토큰으로 변경
-
-3. **올인원 배포 (권장)**
-   - Vercel/Railway 등에 풀스택 배포
-   - 프로덕션 Supabase 연결
-   - 가장 간단하고 안정적인 방법
-
-### 권장 배포 방안
-1. **Supabase 프로덕션 프로젝트 생성**
-2. **백엔드 + 프론트엔드를 Vercel에 배포**
-3. **파일 업로드를 Supabase Storage로 마이그레이션**
-4. **환경 변수를 프로덕션 설정으로 변경**
-
-## Vercel 배포 가능성 분석 (2024-01-08)
-### 배포 준비 상태: 90% 완료 ✅
-
-**✅ 이미 준비된 것들:**
-- Node.js Express 서버 (Vercel 완전 지원)
-- React + Vite 프론트엔드 빌드 시스템
-- 정적 파일 서빙 (`serveStatic` 함수)
-- 환경 변수 지원 (개발/프로덕션 분리)
-- 보안 설정 (Helmet, CORS, Rate Limiting)
-- TypeScript 완전 지원
-- 빌드 스크립트 완성 (`npm run build`, `npm start`)
-
-**🔧 필요한 변경사항:**
-1. **프로덕션 Supabase 연결** (30분)
-   - 로컬 Docker Supabase → 프로덕션 Supabase
-   - 환경 변수 업데이트
-   - 데이터베이스 마이그레이션
-
-2. **환경 변수 설정** (10분)
-   - Vercel 대시보드에서 환경 변수 추가
-   - DATABASE_URL, SESSION_SECRET, SUPABASE_* 키들
-
-3. **파일 업로드 시스템** (선택사항, 1시간)
-   - 로컬 파일 시스템 → Supabase Storage 또는 Vercel Blob
-
-**📋 배포 파일 생성:**
-- `vercel.json` 설정 파일 생성 완료
-- Node.js 서버 및 정적 파일 라우팅 설정 완료
-
-**🎯 배포 시간 예상:**
-- 프로덕션 Supabase 설정 완료 후 **1시간 이내** 배포 가능
-- 기술적 호환성 100% 확인됨
-
-## 로그인 401 오류 및 CSP 오류 해결 (2024-01-08)
-### 문제 및 해결 과정
-
-**🐛 문제 1: 로그인 401 오류**
-- 원인: `getUserByEmail` 함수에서 `mockApprovedUsers` 배열을 검색하지 않음
-- 해결: `mockUsers`, `mockPendingUsers`, `mockApprovedUsers` 모두 검색하도록 수정
-- 결과: `user@example.com` 등 승인된 사용자 로그인 정상 작동
-
-**🐛 문제 2: CSP (Content Security Policy) 오류**
-- 원인: Replit 개발 스크립트가 CSP 정책에 위반됨
-- 해결: 
-  - CSP 설정에서 개발 환경에서만 `https://replit.com` 허용
-  - HTML에서 조건부 스크립트 로딩 추가
-- 결과: 개발 환경에서 CSP 위반 오류 해결
-
-**📋 수정된 파일:**
-- `server/storage.ts`: getUserByEmail, getUser 함수 수정
-- `server/routes.ts`: CSP 정책 조정
-- `client/index.html`: Replit 스크립트 조건부 로딩
-
-**⚠️ 알려진 이슈:**
-- Mock 데이터에서 firstName/lastName → name 필드 통일 필요 (후순위)
-- 일부 linter 오류 발생 (시스템 동작에는 영향 없음)
-
-**✅ 현재 상태:**
-- 로그인 기능 정상 작동
-- CSP 오류 해결 완료
-- 개발 환경 안정성 향상
-
-## bcrypt 해시값 업데이트 (2024-01-08)
-### 문제 및 해결 과정
-
-**🐛 추가 문제: bcrypt 해시 불일치**
-- 원인: MockStorage에 저장된 기존 해시값이 'password123'과 일치하지 않음
-- 해결: 모든 사용자 계정의 bcrypt 해시를 새로 생성하여 업데이트
-- 신규 해시: `$2b$10$A9JdpaIyCd.jxlWWFxB44.ZnhaE7EF3doltKH0xUbE9Gkgky6ywIq`
-
-**📋 업데이트된 계정:**
-- admin@example.com (관리자)
-- user@example.com (승인된 회원)  
-- user1@example.com (승인 대기)
-- user2@example.com (승인 대기)
-
-**🧪 모든 계정 패스워드: password123**
-
-**✅ 최종 해결 상태:**
-- getUserByEmail 함수에서 모든 사용자 배열 검색 ✅
-- CSP 오류 해결 ✅  
-- bcrypt 해시값 정상화 ✅
-- 로그인 디버그 로그 추가 ✅
-
-**🎯 다음 단계:**
-- 브라우저에서 로그인 재시도
-- 모든 계정 정상 작동 확인
+**사용자 작업 필요:**
+1. Supabase 대시보드에서 Storage 버킷 생성:
+   - `attachments` 버킷 (게시판 첨부파일용)
+   - `slider-images` 버킷 (관리자 슬라이더 이미지용)
+2. 버킷 정책 설정:
+   - 모든 사용자 읽기 권한
+   - 인증된 사용자 업로드 권한
+   - 본인 파일만 삭제 권한
+3. 환경 변수 확인:
+   - `VITE_SUPABASE_URL`: Supabase 프로젝트 URL
+   - `VITE_SUPABASE_ANON_KEY`: Supabase 익명 키
+   - `SUPABASE_SERVICE_ROLE_KEY`: Supabase 서비스 역할 키
 
 ### 17. ID/PW 찾기 기능 구현 (✅ 완료)
 **서버 API 추가:**
@@ -613,3 +516,44 @@
 - 서버: 슬라이더 이미지 업로드 시 상세 로그 출력
 - 클라이언트: 업로드 진행 과정 및 에러 상세 정보 표시
 - 파일 정보, 응답 상태, 에러 원인 추적 가능
+
+## 2025-07-15 배포 오류 원인 및 조치
+
+1. **문제 진단**
+   - Vercel 로그에 `Error: getaddrinfo ENOTFOUND db.<project>.supabase.co` 발생 → 데이터베이스 호스트 DNS 해석 실패.
+   - `DATABASE_URL` 환경 변수에 개행/공백 문자가 포함된 상태로 전달되는 경우 발생 가능.
+
+2. **주요 수정 사항**
+   - `server/db.ts`
+     - `process.env.DATABASE_URL?.trim()` 로 whitespace 제거 후 Pool 생성.
+     - 풀 미생성 시 연결 문자열 로그 추가.
+
+3. **향후 조치**
+   - Vercel 프로젝트 환경 변수 재확인: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` 등 트림 포함여부 제거 후 저장.
+   - 배포 재시도 후 동작 확인.
+
+:## 2025-07-15 배포 오류 원인 및 조치
+
+1. **문제 진단**
+   - Vercel 로그에 `Error: getaddrinfo ENOTFOUND db.<project>.supabase.co` 발생 → 데이터베이스 호스트 DNS 해석 실패.
+   - 로컬 테스트 결과: 동일한 ENOTFOUND 오류 발생, DNS 해석 자체가 불가능한 상태.
+   - `nslookup` 결과: IPv6 주소만 반환되나, `ping` 명령어로는 호스트를 찾을 수 없음.
+
+2. **근본 원인**
+   - Supabase 직접 연결은 **IPv6 전용**이며, 많은 환경(Vercel, GitHub Actions 등)에서 IPv6 지원 제한.
+   - 포트 5432는 직접 연결용이나 IPv4 환경에서는 접근 불가.
+   - 포트 6543(Transaction mode)이 IPv4/IPv6 모두 지원하는 Supavisor 풀러.
+
+3. **해결 방안**
+   - DATABASE_URL을 **Transaction mode(포트 6543)**로 변경:
+     ```
+     postgresql://postgres.bebipnpkchwtsqqywzfx:dlscjs1004,,@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+     ```
+   - 또는 Session mode(포트 5432)로 pooler 사용:
+     ```
+     postgresql://postgres.bebipnpkchwtsqqywzfx:dlscjs1004,,@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
+     ```
+
+4. **적용 완료**
+   - `server/db.ts`에 trim() 로직 추가하여 공백 제거.
+   - Vercel 환경 변수에 올바른 pooler 연결 문자열 적용 필요.

@@ -25,6 +25,72 @@ import {
 } from "../shared/schema.js";
 import { z } from "zod";
 
+// Supabase Storage 업로드 함수
+async function uploadToSupabaseStorage(file: Express.Multer.File, bucket: string, folder: string = '') {
+  const fileName = `${folder}${Date.now()}-${Math.round(Math.random() * 1E9)}-${file.originalname}`;
+  
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (error) {
+    console.error('Supabase Storage 업로드 오류:', error);
+    throw new Error(`파일 업로드 실패: ${error.message}`);
+  }
+
+  // 공개 URL 생성
+  const { data: publicUrlData } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(fileName);
+
+  return {
+    fileName,
+    publicUrl: publicUrlData.publicUrl,
+    path: data.path
+  };
+}
+
+// Base64 이미지를 Supabase Storage에 업로드
+async function uploadBase64ToSupabaseStorage(base64Data: string, bucket: string, folder: string = '') {
+  const matches = base64Data.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+  if (!matches) {
+    throw new Error('올바른 이미지 형식이 아닙니다.');
+  }
+
+  const imageType = matches[1];
+  const buffer = Buffer.from(matches[2], 'base64');
+  const fileName = `${folder}paste-${Date.now()}-${Math.round(Math.random() * 1E9)}.${imageType}`;
+  
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(fileName, buffer, {
+      contentType: `image/${imageType}`,
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (error) {
+    console.error('Supabase Storage 업로드 오류:', error);
+    throw new Error(`이미지 업로드 실패: ${error.message}`);
+  }
+
+  // 공개 URL 생성
+  const { data: publicUrlData } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(fileName);
+
+  return {
+    fileName,
+    publicUrl: publicUrlData.publicUrl,
+    path: data.path,
+    size: buffer.length
+  };
+}
+
 export async function registerRoutes(app: Express) {
   // 보안 헤더 설정
   app.use(helmet({
@@ -88,27 +154,9 @@ export async function registerRoutes(app: Express) {
     },
   }));
 
-  // 파일 업로드 미들웨어 설정
-  const storage_multer = multer.diskStorage({
-    destination: async (req, file, cb) => {
-      const dir = path.join(process.cwd(), 'uploads', 'attachments');
-      try {
-        await fs.mkdir(dir, { recursive: true });
-        cb(null, dir);
-      } catch (error) {
-        cb(error as Error, dir);
-      }
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      const baseName = path.basename(file.originalname, ext);
-      cb(null, `${baseName}-${uniqueSuffix}${ext}`);
-    }
-  });
-
+  // 파일 업로드 미들웨어 설정 (메모리 저장)
   const upload = multer({ 
-    storage: storage_multer,
+    storage: multer.memoryStorage(),
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB 제한
     },
@@ -129,14 +177,11 @@ export async function registerRoutes(app: Express) {
       }
     }
   });
-
-  // 업로드된 파일 정적 서빙
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   
   // 슬라이더 이미지 등 public 에셋 정적 서빙
   app.use(express.static(path.join(process.cwd(), 'client', 'public')));
 
-  // 파일 업로드 API
+  // 파일 업로드 API (Supabase Storage)
   app.post('/api/upload', requireAuth, upload.single('file'), async (req: AuthRequest, res) => {
     try {
       if (!req.file) {
@@ -144,27 +189,18 @@ export async function registerRoutes(app: Express) {
       }
 
       const isImage = req.file.mimetype.startsWith('image/');
-      const filePath = `/uploads/attachments/${req.file.filename}`;
-
-      // 임시로 postId 없이 파일만 업로드 (나중에 게시글 저장시 연결)
-      const attachmentData = {
-        postId: null, // 임시로 null, 나중에 게시글 저장시 업데이트
-        filename: req.file.filename,
-        originalFilename: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        filePath: filePath,
-        isImage: isImage,
-      };
-
+      
+      // Supabase Storage에 파일 업로드
+      const uploadResult = await uploadToSupabaseStorage(req.file, 'attachments', 'posts/');
+      
       res.json({
-        filename: req.file.filename,
+        filename: uploadResult.fileName,
         originalFilename: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size,
-        filePath: filePath,
+        filePath: uploadResult.path,
         isImage: isImage,
-        url: filePath, // 클라이언트에서 사용할 URL
+        url: uploadResult.publicUrl, // Supabase Storage 공개 URL
       });
     } catch (error) {
       console.error('File upload error:', error);
@@ -172,7 +208,7 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // 이미지 붙여넣기 업로드 API
+  // 이미지 붙여넣기 업로드 API (Supabase Storage)
   app.post('/api/upload-image', requireAuth, async (req: AuthRequest, res) => {
     try {
       const { imageData } = req.body;
@@ -181,33 +217,17 @@ export async function registerRoutes(app: Express) {
         return res.status(400).json({ message: '올바른 이미지 데이터가 아닙니다.' });
       }
 
-      // Base64 데이터 파싱
-      const matches = imageData.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-      if (!matches) {
-        return res.status(400).json({ message: '올바른 이미지 형식이 아닙니다.' });
-      }
-
-      const imageType = matches[1];
-      const base64Data = matches[2];
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      // 파일명 생성
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const filename = `paste-${uniqueSuffix}.${imageType}`;
-      const filePath = `/uploads/attachments/${filename}`;
-      const absolutePath = path.join(process.cwd(), 'uploads', 'attachments', filename);
-
-      // 파일 저장
-      await fs.writeFile(absolutePath, buffer);
+      // Supabase Storage에 Base64 이미지 업로드
+      const uploadResult = await uploadBase64ToSupabaseStorage(imageData, 'attachments', 'posts/');
 
       res.json({
-        filename: filename,
-        originalFilename: filename,
-        mimetype: `image/${imageType}`,
-        size: buffer.length,
-        filePath: filePath,
+        filename: uploadResult.fileName,
+        originalFilename: uploadResult.fileName,
+        mimetype: `image/${uploadResult.fileName.split('.').pop()}`,
+        size: uploadResult.size,
+        filePath: uploadResult.path,
         isImage: true,
-        url: filePath, // 클라이언트에서 사용할 URL
+        url: uploadResult.publicUrl, // Supabase Storage 공개 URL
       });
     } catch (error) {
       console.error('Image paste upload error:', error);
@@ -1016,27 +1036,9 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // 슬라이더 이미지 업로드 미들웨어 설정
-  const sliderImageStorage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-      const dir = path.join(process.cwd(), 'client', 'src', 'img', 'slider');
-      try {
-        await fs.mkdir(dir, { recursive: true });
-        cb(null, dir);
-      } catch (error) {
-        cb(error as Error, dir);
-      }
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      const baseName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9가-힣]/g, '_');
-      cb(null, `slider-${baseName}-${uniqueSuffix}${ext}`);
-    }
-  });
-
+  // 슬라이더 이미지 업로드 미들웨어 설정 (메모리 저장)
   const uploadSliderImage = multer({ 
-    storage: sliderImageStorage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB 제한
     fileFilter: (req, file, cb) => {
       if (file.mimetype.startsWith('image/')) {
@@ -1080,7 +1082,7 @@ export async function registerRoutes(app: Express) {
     });
   });
 
-  // 실제 업로드 처리 함수
+  // 슬라이더 이미지 업로드 처리 함수 (Supabase Storage)
   async function handleSliderImageUpload(req: AuthRequest, res: express.Response) {
     try {
       console.log('📁 파일 업로드 처리 시작');
@@ -1091,24 +1093,23 @@ export async function registerRoutes(app: Express) {
       }
 
       console.log('📁 업로드된 파일 정보:', {
-        filename: req.file.filename,
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size,
-        path: req.file.path,
-        destination: req.file.destination
+        buffer: req.file.buffer ? 'present' : 'missing'
       });
 
-      const imageUrl = `/img/slider/${req.file.filename}`;
+      // Supabase Storage에 슬라이더 이미지 업로드
+      const uploadResult = await uploadToSupabaseStorage(req.file, 'slider-images', 'slider/');
       
       const result = {
         success: true,
-        filename: req.file.filename,
+        filename: uploadResult.fileName,
         originalFilename: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size,
-        imageUrl: imageUrl,
-        url: imageUrl
+        imageUrl: uploadResult.publicUrl,
+        url: uploadResult.publicUrl
       };
       
       console.log('✅ 슬라이더 이미지 업로드 성공:', result);

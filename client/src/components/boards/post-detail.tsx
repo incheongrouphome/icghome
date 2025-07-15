@@ -140,10 +140,10 @@ export default function PostDetail({ categorySlug }: PostDetailProps) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 파일 다운로드
+  // 파일 다운로드 (Supabase Storage URL 사용)
   const handleDownload = (attachment: any) => {
     const link = document.createElement('a');
-    link.href = attachment.filePath;
+    link.href = attachment.url || attachment.filePath; // Supabase Storage URL 우선 사용
     link.download = attachment.originalFilename;
     document.body.appendChild(link);
     link.click();
