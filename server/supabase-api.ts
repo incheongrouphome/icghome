@@ -1,5 +1,5 @@
-import { supabase, supabaseAdmin } from "../config/supabase";
-import type { Database } from "../config/supabase";
+import { supabase, supabaseAdmin } from "../config/supabase.js";
+import type { Database } from "../config/supabase.js";
 import crypto from "crypto";
 
 // 타입 정의

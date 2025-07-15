@@ -11,7 +11,7 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage.js";
 import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth.js";
 import { AuthService } from "./supabase-api.js";
-import { supabase } from "../config/supabase";
+import { supabase } from "../config/supabase.js";
 import { 
   insertPostSchema, 
   insertCommentSchema, 
