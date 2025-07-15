@@ -1,14 +1,15 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import { registerRoutes } from "./routes.js";
-import { setupVite, serveStatic, log } from "./vite.js";
+import { serveStatic, log } from "./static.js"; // vite.js -> static.js
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Logger middleware (existing code is fine)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -27,11 +28,9 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -39,32 +38,11 @@ app.use((req, res, next) => {
   next();
 });
 
+
 (async () => {
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  if (process.env.NODE_ENV === 'development') {
-    // Development: Use Vite middleware
-    const { setupVite, log } = await import("./vite.js");
-    const http = await import('http');
-    const server = http.createServer(app);
-    await registerRoutes(app); // API routes
-    await setupVite(app, server); // Vite dev server
-    
-    const port = 5000;
-    const host = 'localhost';
-    server.listen(port, host, () => {
-      log(`serving on http://${host}:${port}`);
-    });
-  } else {
-    // Production: Register API routes for Vercel
-    await registerRoutes(app);
-  }
+  // Production or Development, just register routes.
+  // Vite is no longer handled here.
+  await registerRoutes(app);
 })();
 
 export default app;
