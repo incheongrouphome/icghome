@@ -13,22 +13,14 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "server/index.ts"
+      "source": "/api/:path*",
+      "destination": "/server/index.ts"
     },
     {
-      "src": "/assets/(.*)",
-      "handle": "filesystem"
-    },
-    {
-      "src": "/img/(.*)",
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api|assets|img|uploads|favicon.ico).*)",
+      "destination": "/index.html"
     }
   ]
 } 

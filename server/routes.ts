@@ -982,7 +982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         storage: {
           uploadsDir: 'uploads/attachments',
-          imagesDir: 'client/src/img'
+          imagesDir: 'client/public/img'
         },
         environment: process.env.NODE_ENV || 'development'
       };
