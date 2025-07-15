@@ -573,3 +573,15 @@
    - 라우터 설정: `/announcements` 라우트가 `App.tsx`에 정의되지 않음
    - 해결: `App.tsx`에 `/announcements` 라우트 추가
    - import 구문 및 Route 컴포넌트 추가 완료
+
+8. **홈화면 각 탭별 더보기 버튼 개선**
+   - 문제: 모든 탭에서 동일한 더보기 링크 사용 (메인 페이지로 이동)
+   - 해결: 각 탭별로 해당 게시판으로 직접 이동하도록 수정
+   - 회원기관 탭별 링크:
+     - 회원공지 → `/members/notices`
+     - 소통공간 → `/members/communication`
+     - 사업신청 → `/members/application`
+   - 열린공지 탭별 링크:
+     - 열린공지 → `/announcements/general`
+     - 채용공고 → `/announcements/jobs`
+   - 더보기 버튼을 각 탭 내부로 이동하여 탭별 맞춤 링크 제공

@@ -161,12 +161,6 @@ export default function ContentSections() {
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">회원기관</h3>
-            <a 
-              href="/members" 
-              className="text-xs text-medium-gray hover:text-primary transition-colors"
-            >
-              더보기 →
-            </a>
           </div>
           <Tabs defaultValue="notices" className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-8">
@@ -176,6 +170,15 @@ export default function ContentSections() {
             </TabsList>
             
             <TabsContent value="notices" className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">회원공지</span>
+                <a 
+                  href="/members/notices" 
+                  className="text-xs text-medium-gray hover:text-primary transition-colors"
+                >
+                  더보기 →
+                </a>
+              </div>
               {renderPostList(
                 memberNoticesPosts,
                 'member-notices',
@@ -185,6 +188,15 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="communication" className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">소통공간</span>
+                <a 
+                  href="/members/communication" 
+                  className="text-xs text-medium-gray hover:text-primary transition-colors"
+                >
+                  더보기 →
+                </a>
+              </div>
               {renderPostList(
                 communicationPosts,
                 'communication',
@@ -194,6 +206,15 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="applications" className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">사업신청</span>
+                <a 
+                  href="/members/application" 
+                  className="text-xs text-medium-gray hover:text-primary transition-colors"
+                >
+                  더보기 →
+                </a>
+              </div>
               {renderPostList(
                 businessApplicationPosts,
                 'business-application',
@@ -210,12 +231,6 @@ export default function ContentSections() {
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">열린공지</h3>
-            <a 
-              href="/announcements" 
-              className="text-xs text-medium-gray hover:text-primary transition-colors"
-            >
-              더보기 →
-            </a>
           </div>
           <Tabs defaultValue="public" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-8">
@@ -224,6 +239,15 @@ export default function ContentSections() {
             </TabsList>
             
             <TabsContent value="public" className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">열린공지</span>
+                <a 
+                  href="/announcements/general" 
+                  className="text-xs text-medium-gray hover:text-primary transition-colors"
+                >
+                  더보기 →
+                </a>
+              </div>
               {renderPostList(
                 generalNoticesPosts,
                 'general-notices',
@@ -233,6 +257,15 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="jobs" className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-500">채용공고</span>
+                <a 
+                  href="/announcements/jobs" 
+                  className="text-xs text-medium-gray hover:text-primary transition-colors"
+                >
+                  더보기 →
+                </a>
+              </div>
               {renderPostList(
                 jobPostingsPosts,
                 'job-postings',
