@@ -1,14 +1,16 @@
 # 주요 진행상황 기록
 
 ## 현재 진행 중인 작업 (2024년 1월 16일)
-### TypeScript 컴파일 오류 해결 (진행 중)
-- 문제: Vercel 배포 시 server/storage.ts에서 createdAt 필드가 Date | null 타입으로 인한 오류
-- 원인: 스키마에서 timestamp 필드가 .notNull() 명시 없이 정의됨
-- 해결방법: 근본적 해결책 선택 (스키마 수정)
-- 작업 완료:
-  - shared/schema.ts: 모든 timestamp 필드에 .notNull() 추가
-  - 003_fix_timestamp_not_null.sql: 마이그레이션 파일 생성
-- 다음 단계: 마이그레이션 적용 및 배포 테스트
+### TypeScript 컴파일 오류 해결 (✅ 완료)
+- 문제: Vercel 배포 시 server/storage.ts에서 여러 TypeScript 오류
+- 근본 원인: 스키마와 코드 간 타입 불일치
+- 해결 완료:
+  - ✅ shared/schema.ts: 모든 timestamp 필드에 .notNull() 추가
+  - ✅ 003_fix_timestamp_not_null.sql: 마이그레이션 파일 생성
+  - ✅ server/storage.ts: firstName/lastName → name 필드 변경
+  - ✅ undefined 타입 문제 해결 (postId, isImage에 ?? null 추가)
+  - ✅ Mock data 타입 일치성 수정
+- 다음 단계: 배포 테스트 완료 확인
 
 ## 완료된 작업들
 

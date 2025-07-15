@@ -61,14 +61,14 @@ enable_signup = true
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
-double_confirm_email_change = true
+# double_confirm_email_change = true  # Deprecated in newer Supabase CLI versions
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 
 # Use pre-defined map of claims in JWT
-[auth.jwt]
-default_group_name = "authenticated"
-admin_group_name = "supabase_admin"
+# [auth.jwt]  # Deprecated in newer Supabase CLI versions
+# default_group_name = "authenticated"
+# admin_group_name = "supabase_admin"
 
 # Use an external OAuth provider. The full list of providers are:
 # `apple`, `azure`, `bitbucket`, `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin`, `notion`, `twitch`, `twitter`, `slack`, `spotify`, `workos`, `zoom`.
