@@ -34,8 +34,8 @@ export const users = pgTable("users", {
   role: varchar("role").default("visitor").notNull(), // visitor, member, admin
   isApproved: boolean("is_approved").default(false).notNull(),
   organization: varchar("organization"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Board categories
@@ -47,7 +47,7 @@ export const boardCategories = pgTable("board_categories", {
   requiresAuth: boolean("requires_auth").default(false),
   requiresApproval: boolean("requires_approval").default(false),
   allowedRoles: varchar("allowed_roles").array(), // ['member', 'admin']
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Posts
@@ -59,8 +59,8 @@ export const posts = pgTable("posts", {
   categoryId: integer("category_id").references(() => boardCategories.id),
   isNotice: boolean("is_notice").default(false),
   viewCount: integer("view_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Comments
@@ -70,8 +70,8 @@ export const comments = pgTable("comments", {
   authorId: varchar("author_id").references(() => users.id),
   postId: integer("post_id").references(() => posts.id),
   parentId: integer("parent_id"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Slider images
@@ -82,8 +82,8 @@ export const sliderImages = pgTable("slider_images", {
   altText: varchar("alt_text"),
   isActive: boolean("is_active").default(true),
   order: integer("order").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Attachments
@@ -96,7 +96,7 @@ export const attachments = pgTable("attachments", {
   size: integer("size").notNull(),
   filePath: varchar("file_path").notNull(),
   isImage: boolean("is_image").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Relations
