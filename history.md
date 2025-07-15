@@ -2,9 +2,9 @@
 
 ## 완료된 작업들
 
-### ES 모듈 import 오류 해결 (✅ 완료) - 2024년 1월 16일
+### Vercel 배포 오류 해결 (✅ 완료) - 2024년 1월 16일
 - 문제: Vercel 배포 시 여러 MODULE_NOT_FOUND 오류
-- 근본 원인: ES 모듈 환경에서 import 확장자 누락 및 path mapping 문제
+- 근본 원인: ES 모듈 환경에서 import 확장자 누락 및 npm 의존성 문제
 - 해결 완료:
   - ✅ TypeScript 컴파일 오류: timestamp 필드 .notNull() 추가
   - ✅ server/storage.ts: firstName/lastName → name 필드 변경
@@ -12,7 +12,8 @@
   - ✅ 외부 모듈 import: ../config/supabase, ../vite.config에 .js 확장자 추가
   - ✅ path mapping 문제: @shared/schema → ../shared/schema.js로 변경
   - ✅ 누락된 확장자: server/auth.ts의 import 확장자 추가
-- 결과: Vercel 서버리스 환경에서 모든 ES 모듈 import 정상 작동
+  - ✅ Rollup 바이너리 문제: package-lock.json 재생성 및 linux 바이너리 추가
+- 결과: Vercel 서버리스 환경에서 모든 의존성 문제 해결
 
 ## 완료된 작업들
 
