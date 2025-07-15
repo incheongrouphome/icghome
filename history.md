@@ -39,6 +39,20 @@
   - ✅ client/dist/img/ (이미지 디렉토리)
 - 결과: Vercel 배포를 위한 올바른 출력 디렉토리 구조 완성
 
+### React 애플리케이션 빌드 문제 해결 (✅ 완료) - 2024년 1월 16일
+- 문제: 배포된 사이트에서 React 앱이 아닌 기본 HTML 텍스트만 표시
+- 근본 원인: build.cjs 커스텀 스크립트가 실제 React 애플리케이션을 빌드하지 않음
+- 해결 과정:
+  - ✅ 로컬에서 vite build 테스트 - 정상 작동 확인
+  - ✅ package.json 빌드 스크립트를 "vite build"로 변경
+  - ✅ build.cjs 파일 제거
+  - ✅ 실제 React 애플리케이션 번들 생성 확인
+- 생성된 파일들:
+  - ✅ client/dist/index.html (React 마운트 포인트 포함)
+  - ✅ client/dist/assets/index-C7OwsuI0.css (108KB 전체 CSS 번들)
+  - ✅ client/dist/assets/index-DyQvEHXz.js (232KB JavaScript 번들)
+- 결과: 실제 React 애플리케이션이 정상적으로 빌드되어 배포됨
+
 ## 완료된 작업들
 
 ### 1. 저장소 이전 작업 (✅ 완료) - 2024년 1월 14일
