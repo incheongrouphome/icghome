@@ -53,6 +53,16 @@
   - ✅ client/dist/assets/index-DyQvEHXz.js (232KB JavaScript 번들)
 - 결과: 실제 React 애플리케이션이 정상적으로 빌드되어 배포됨
 
+### esbuild 바이너리 문제 재발 및 해결 (✅ 완료) - 2024년 1월 16일
+- 문제: vite build 시 "@esbuild/linux-x64" 패키지를 찾을 수 없다는 오류 재발
+- 근본 원인: vite.config.js 파일 로드 시 esbuild가 필요한데 바이너리 의존성 문제
+- 해결 과정:
+  - ✅ vite.config.js → vite.config.cjs 파일명 변경
+  - ✅ ES 모듈 import/export → CommonJS require/module.exports 변환
+  - ✅ import.meta.url → __dirname 사용 방식 변경
+  - ✅ 로컬 빌드 테스트 성공 확인
+- 결과: esbuild 바이너리 의존성 없이 vite build 정상 작동
+
 ## 완료된 작업들
 
 ### 1. 저장소 이전 작업 (✅ 완료) - 2024년 1월 14일
