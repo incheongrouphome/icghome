@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes.js";
 import { serveStatic, log } from "./static.js"; // vite.js -> static.js
 
 const app = express();
+app.set('trust proxy', 1); // Add this line to trust the first proxy
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
