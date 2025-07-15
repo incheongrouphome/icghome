@@ -127,7 +127,8 @@
     "tsx": "^4.16.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.19",
-    "@esbuild/linux-x64": "^0.23.0"
+    "@esbuild/linux-x64": "^0.23.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.20.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.45.0",
