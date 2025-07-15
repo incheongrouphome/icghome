@@ -2,17 +2,17 @@
 
 ## 완료된 작업들
 
-### TypeScript 컴파일 오류 해결 (✅ 완료) - 2024년 1월 16일
-- 문제: Vercel 배포 시 server/storage.ts에서 여러 TypeScript 오류
-- 근본 원인: 스키마와 코드 간 타입 불일치
+### ES 모듈 import 오류 해결 (✅ 완료) - 2024년 1월 16일
+- 문제: Vercel 배포 시 여러 MODULE_NOT_FOUND 오류
+- 근본 원인: ES 모듈 환경에서 import 확장자 누락 및 path mapping 문제
 - 해결 완료:
-  - ✅ shared/schema.ts: 모든 timestamp 필드에 .notNull() 추가
-  - ✅ 003_fix_timestamp_not_null.sql: 마이그레이션 파일 생성
+  - ✅ TypeScript 컴파일 오류: timestamp 필드 .notNull() 추가
   - ✅ server/storage.ts: firstName/lastName → name 필드 변경
-  - ✅ undefined 타입 문제 해결 (postId, isImage에 ?? null 추가)
-  - ✅ Mock data 타입 일치성 수정
-  - ✅ Vercel 배포 성공 확인 (빌드 시간: 29초)
-- 결과: 근본적인 타입 안정성 확보, 향후 유사 오류 방지
+  - ✅ 로컬 모듈 import: ./storage, ./auth 등에 .js 확장자 추가
+  - ✅ 외부 모듈 import: ../config/supabase, ../vite.config에 .js 확장자 추가
+  - ✅ path mapping 문제: @shared/schema → ../shared/schema.js로 변경
+  - ✅ 누락된 확장자: server/auth.ts의 import 확장자 추가
+- 결과: Vercel 서버리스 환경에서 모든 ES 모듈 import 정상 작동
 
 ## 완료된 작업들
 
