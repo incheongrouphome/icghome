@@ -585,3 +585,11 @@
      - 열린공지 → `/announcements/general`
      - 채용공고 → `/announcements/jobs`
    - 더보기 버튼을 각 탭 내부로 이동하여 탭별 맞춤 링크 제공
+
+9. **홈화면 더보기 버튼 위치 및 동작 최적화**
+   - 요구사항: 기존처럼 더보기 버튼을 상단에 두고 탭에 따라 링크만 변경
+   - 구현: React state와 Tabs onValueChange를 사용한 동적 링크 변경
+   - 상태 관리: membersActiveTab, publicActiveTab state 추가
+   - 동적 링크 함수: getMembersMoreLink(), getPublicMoreLink() 구현
+   - UI 개선: 더보기 버튼을 기존 위치(상단)로 복원
+   - 사용자 경험: 탭 클릭 시 더보기 버튼 링크가 즉시 변경

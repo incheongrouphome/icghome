@@ -2,8 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import type { PostWithAuthor } from "@shared/schema";
+import { useState } from "react";
 
 export default function ContentSections() {
+  const [membersActiveTab, setMembersActiveTab] = useState("notices");
+  const [publicActiveTab, setPublicActiveTab] = useState("public");
   // 각 카테고리별 데이터 가져오기
   const { data: memberNoticesCategory } = useQuery({
     queryKey: ["/api/categories", "member-notices"],
@@ -154,6 +157,31 @@ export default function ContentSections() {
     );
   };
 
+  // 현재 활성화된 탭에 따라 더보기 링크 결정
+  const getMembersMoreLink = () => {
+    switch (membersActiveTab) {
+      case "notices":
+        return "/members/notices";
+      case "communication":
+        return "/members/communication";
+      case "applications":
+        return "/members/application";
+      default:
+        return "/members/notices";
+    }
+  };
+
+  const getPublicMoreLink = () => {
+    switch (publicActiveTab) {
+      case "public":
+        return "/announcements/general";
+      case "jobs":
+        return "/announcements/jobs";
+      default:
+        return "/announcements/general";
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {/* 회원기관 */}
@@ -161,8 +189,14 @@ export default function ContentSections() {
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">회원기관</h3>
+            <a 
+              href={getMembersMoreLink()}
+              className="text-xs text-medium-gray hover:text-primary transition-colors"
+            >
+              더보기 →
+            </a>
           </div>
-          <Tabs defaultValue="notices" className="w-full">
+          <Tabs defaultValue="notices" onValueChange={setMembersActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 h-8">
               <TabsTrigger value="notices" className="text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-blue-500 hover:bg-blue-25 transition-all duration-200">회원공지</TabsTrigger>
               <TabsTrigger value="communication" className="text-xs data-[state=active]:bg-green-50 data-[state=active]:text-green-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-green-500 hover:bg-green-25 transition-all duration-200">소통공간</TabsTrigger>
@@ -170,15 +204,6 @@ export default function ContentSections() {
             </TabsList>
             
             <TabsContent value="notices" className="mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">회원공지</span>
-                <a 
-                  href="/members/notices" 
-                  className="text-xs text-medium-gray hover:text-primary transition-colors"
-                >
-                  더보기 →
-                </a>
-              </div>
               {renderPostList(
                 memberNoticesPosts,
                 'member-notices',
@@ -188,15 +213,6 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="communication" className="mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">소통공간</span>
-                <a 
-                  href="/members/communication" 
-                  className="text-xs text-medium-gray hover:text-primary transition-colors"
-                >
-                  더보기 →
-                </a>
-              </div>
               {renderPostList(
                 communicationPosts,
                 'communication',
@@ -206,15 +222,6 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="applications" className="mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">사업신청</span>
-                <a 
-                  href="/members/application" 
-                  className="text-xs text-medium-gray hover:text-primary transition-colors"
-                >
-                  더보기 →
-                </a>
-              </div>
               {renderPostList(
                 businessApplicationPosts,
                 'business-application',
@@ -231,23 +238,20 @@ export default function ContentSections() {
         <CardContent className="p-4 h-full">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-bold text-dark-gray">열린공지</h3>
+            <a 
+              href={getPublicMoreLink()}
+              className="text-xs text-medium-gray hover:text-primary transition-colors"
+            >
+              더보기 →
+            </a>
           </div>
-          <Tabs defaultValue="public" className="w-full">
+          <Tabs defaultValue="public" onValueChange={setPublicActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-8">
               <TabsTrigger value="public" className="text-xs data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-orange-500 hover:bg-orange-25 transition-all duration-200">열린공지</TabsTrigger>
               <TabsTrigger value="jobs" className="text-xs data-[state=active]:bg-teal-50 data-[state=active]:text-teal-700 data-[state=active]:shadow-sm data-[state=active]:border-b-2 data-[state=active]:border-b-teal-500 hover:bg-teal-25 transition-all duration-200">채용공고</TabsTrigger>
             </TabsList>
             
             <TabsContent value="public" className="mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">열린공지</span>
-                <a 
-                  href="/announcements/general" 
-                  className="text-xs text-medium-gray hover:text-primary transition-colors"
-                >
-                  더보기 →
-                </a>
-              </div>
               {renderPostList(
                 generalNoticesPosts,
                 'general-notices',
@@ -257,15 +261,6 @@ export default function ContentSections() {
             </TabsContent>
             
             <TabsContent value="jobs" className="mt-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">채용공고</span>
-                <a 
-                  href="/announcements/jobs" 
-                  className="text-xs text-medium-gray hover:text-primary transition-colors"
-                >
-                  더보기 →
-                </a>
-              </div>
               {renderPostList(
                 jobPostingsPosts,
                 'job-postings',
