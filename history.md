@@ -567,3 +567,9 @@
    - 해결: 데이터베이스 설정을 클라이언트 코드에 맞게 수정
    - 마이그레이션 파일 생성: `004_fix_category_slugs.sql`
    - 기존 카테고리 slug 통일: `general-notices`, `job-postings`
+
+7. **홈화면 '더보기' 버튼 라우터 오류 해결**
+   - 홈화면 열린공지 '더보기' 버튼: `/announcements` 링크
+   - 라우터 설정: `/announcements` 라우트가 `App.tsx`에 정의되지 않음
+   - 해결: `App.tsx`에 `/announcements` 라우트 추가
+   - import 구문 및 Route 컴포넌트 추가 완료

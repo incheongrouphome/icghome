@@ -28,6 +28,7 @@ import MemberNotices from "@/pages/members/notices";
 import Communication from "@/pages/members/communication";
 import Application from "@/pages/members/application";
 // Announcements submenu pages
+import Announcements from "@/pages/announcements";
 import GeneralAnnouncements from "@/pages/announcements/general";
 import JobPostings from "@/pages/announcements/jobs";
 
@@ -58,6 +59,7 @@ function Router() {
           <Route path="/members/application" component={Application} />
           <Route path="/members/application/:id" component={Application} />
           
+          <Route path="/announcements" component={Announcements} />
           <Route path="/announcements/general" component={GeneralAnnouncements} />
           <Route path="/announcements/general/:id" component={GeneralAnnouncements} />
           <Route path="/announcements/jobs" component={JobPostings} />
