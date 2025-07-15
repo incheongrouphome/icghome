@@ -8,9 +8,9 @@ import { promises as fs } from "fs";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import { storage } from "./storage";
-import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth";
-import { AuthService } from "./supabase-api";
+import { storage } from "./storage.js";
+import { requireAuth, requireAdmin, comparePassword, AuthRequest } from "./auth.js";
+import { AuthService } from "./supabase-api.js";
 import { supabase } from "../config/supabase";
 import { 
   insertPostSchema, 

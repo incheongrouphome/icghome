@@ -1,7 +1,8 @@
 # 주요 진행상황 기록
 
-## 현재 진행 중인 작업 (2024년 1월 16일)
-### TypeScript 컴파일 오류 해결 (✅ 완료)
+## 완료된 작업들
+
+### TypeScript 컴파일 오류 해결 (✅ 완료) - 2024년 1월 16일
 - 문제: Vercel 배포 시 server/storage.ts에서 여러 TypeScript 오류
 - 근본 원인: 스키마와 코드 간 타입 불일치
 - 해결 완료:
@@ -10,7 +11,8 @@
   - ✅ server/storage.ts: firstName/lastName → name 필드 변경
   - ✅ undefined 타입 문제 해결 (postId, isImage에 ?? null 추가)
   - ✅ Mock data 타입 일치성 수정
-- 다음 단계: 배포 테스트 완료 확인
+  - ✅ Vercel 배포 성공 확인 (빌드 시간: 29초)
+- 결과: 근본적인 타입 안정성 확보, 향후 유사 오류 방지
 
 ## 완료된 작업들
 

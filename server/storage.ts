@@ -22,9 +22,9 @@ import {
   type PublicUser,
   type SignupData,
 } from "@shared/schema";
-import { db } from "./db";
+import { db } from "./db.js";
 import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
-import { generateUserId, hashPassword } from "./auth";
+import { generateUserId, hashPassword } from "./auth.js";
 
 export interface IStorage {
   // User operations
