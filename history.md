@@ -560,3 +560,10 @@
    - `config/supabase.ts`: `VITE_` 접두사 제거
    - 환경 변수 우선순위: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - 기본값 제거하여 환경 변수 필수 설정 강제
+
+6. **카테고리 slug 불일치 문제 해결**
+   - 클라이언트 코드: `general-notices` 사용
+   - 데이터베이스: `general-announcements` 또는 `general` 사용으로 404 에러 발생
+   - 해결: 데이터베이스 설정을 클라이언트 코드에 맞게 수정
+   - 마이그레이션 파일 생성: `004_fix_category_slugs.sql`
+   - 기존 카테고리 slug 통일: `general-notices`, `job-postings`

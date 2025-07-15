@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS slider_images (
 -- 초기 데이터 삽입
 INSERT INTO board_categories (name, slug, description, requires_auth, requires_approval, allowed_roles) 
 VALUES 
-  ('일반 공지', 'general-announcements', '모든 방문자가 볼 수 있는 공지사항', false, false, NULL),
+  ('일반 공지', 'general-notices', '모든 방문자가 볼 수 있는 공지사항', false, false, NULL),
   ('채용 공고', 'job-postings', '구인 구직 정보', false, false, NULL),
   ('회원 공지', 'member-notices', '회원 전용 공지사항', true, false, ARRAY['member', 'admin']),
   ('소통 공간', 'communication', '회원 간 소통 공간', true, true, ARRAY['member', 'admin']),

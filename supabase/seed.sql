@@ -1,7 +1,7 @@
 -- 기본 게시판 카테고리 데이터 삽입
 insert into public.board_categories (name, slug, description, requires_auth, requires_approval, allowed_roles) values
-('열린공지', 'general', '일반 공지사항', false, false, null),
-('채용공고', 'jobs', '채용 관련 공지', false, false, null),
+('열린공지', 'general-notices', '일반 공지사항', false, false, null),
+('채용공고', 'job-postings', '채용 관련 공지', false, false, null),
 ('회원공지', 'member-notices', '회원 전용 공지사항', true, false, array['member', 'admin']),
 ('소통공간', 'communication', '회원 간 소통 공간', true, true, array['member', 'admin']),
 ('사업신청', 'business-application', '사업 신청 관련', true, true, array['member', 'admin']);
